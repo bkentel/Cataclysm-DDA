@@ -15,11 +15,11 @@ namespace {
 // The purpose is very unclear. The code is never used as far as I can tell from setting
 // a breakpoint to fire on finding it.
 //
-// This define allows the behavior to be toggles until it can be understood what the original code
-// was for.
+// CATA_TRUNCATE_AT_ETX allows the behavior to be toggled until it can be understood what the
+// the intent and purpose of the original code was.
 //--------------------------------------------------------------------------------------------------
 #if CATA_TRUNCATE_AT_ETX
-size_t truncate_string(char* const buffer, size_t const size) noexcept
+size_t truncate_string(char *const buffer, size_t const size) noexcept
 {
     auto const beg = buffer;
     auto const end = buffer + size;
@@ -32,7 +32,7 @@ size_t truncate_string(char* const buffer, size_t const size) noexcept
     return static_cast<size_t>(it - beg);
 }
 #else
-size_t truncate_string(char* const buffer, size_t const size) noexcept
+size_t truncate_string(char *const buffer, size_t const size) noexcept
 {
     (void)buffer;
     return size;
@@ -44,11 +44,11 @@ size_t truncate_string(char* const buffer, size_t const size) noexcept
 // TODO: move elsewhere.
 //--------------------------------------------------------------------------------------------------
 #if defined(_MSC_VER)
-void string_copy(char* const dst, size_t const dst_size, char const* src) noexcept {
+void string_copy(char *const dst, size_t const dst_size, char const *src) noexcept {
     strncpy_s(dst, dst_size, src, _TRUNCATE);
 }
 #else
-void string_copy(char* const dst, size_t const dst_size, char const* src) noexcept {
+void string_copy(char *const dst, size_t const dst_size, char const *src) noexcept {
     auto const src_size = strlen(src);
     strncpy(dst, src, std::min(dst_size, src_size));
 }
@@ -152,7 +152,7 @@ int try_format(char *const buffer, size_t const buffer_size, char const *const f
 //! platform specific implementation.
 //--------------------------------------------------------------------------------------------------
 template <typename Buffer>
-Buffer try_format(Buffer buffer, char const* const format, va_list args)
+Buffer try_format(Buffer buffer, char const *const format, va_list args)
 {
     // Keep trying while the buffer is too small.
     for (;;) {
@@ -171,35 +171,35 @@ Buffer try_format(Buffer buffer, char const* const format, va_list args)
 //--------------------------------------------------------------------------------------------------
 } //namespace
 //--------------------------------------------------------------------------------------------------
-std::string string_format(char const *pattern, ...)
+std::string string_format(char const *const format, ...)
 {
     va_list ap;
-    va_start(ap, pattern);
-    auto result = vstring_format(pattern, ap);
+    va_start(ap, format);
+    auto result = vstring_format(format, ap);
     va_end(ap);
 
     return result;
 }
 
 //--------------------------------------------------------------------------------------------------
-std::string vstring_format(char const *pattern, va_list argptr)
+std::string vstring_format(char const *const format, va_list argptr)
 {
-    return try_format(sprintf_string_buffer {}, pattern, argptr).to_string();
+    return try_format(sprintf_string_buffer {}, format, argptr).to_string();
 }
 
 //--------------------------------------------------------------------------------------------------
-formatted_buffer buffer_format(char const *pattern, ...)
+formatted_buffer buffer_format(char const *const format, ...)
 {
     va_list ap;
-    va_start(ap, pattern);
-    auto result = vbuffer_format(pattern, ap);
+    va_start(ap, format);
+    auto result = vbuffer_format(format, ap);
     va_end(ap);
 
     return result;
 }
 
 //--------------------------------------------------------------------------------------------------
-formatted_buffer vbuffer_format(char const *pattern, va_list argptr)
+formatted_buffer vbuffer_format(char const *const format, va_list argptr)
 {
-    return try_format(formatted_buffer {}, pattern, argptr);
+    return try_format(formatted_buffer {}, format, argptr);
 }

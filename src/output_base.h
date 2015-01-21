@@ -15,7 +15,7 @@ struct formatted_buffer {
 
     using array_t = std::array<char, intial_buffer_size>;
 
-    formatted_buffer() {
+    formatted_buffer() noexcept {
         new (&arr) array_t;
         arr[0] = '\0';
     }
@@ -84,10 +84,17 @@ struct formatted_buffer {
         return lhs;
     } 
 
+#if defined(_MSC_VER)            // momentarial disable a spurious warning
+#   pragma warning(push)         // on MSVC 2015 about
+#   pragma warning(disable:4624) // an implicitly deleted destructor in the union.
+#endif
     union {
         array_t     arr;
         std::string str;
     };
+#if defined(_MSC_VER)
+#   pragma warning(pop)
+#endif
 
     size_t cur_size   = intial_buffer_size;
     bool   is_dynamic = false;
@@ -97,14 +104,14 @@ struct formatted_buffer {
 //! printf style formatted output to a std::string. Use this in the general case where a real
 //! string is needed (i.e to store in a variable for later).
 //--------------------------------------------------------------------------------------------------
-std::string string_format(char const *pattern, ...);
-std::string vstring_format(char const *pattern, va_list argptr);
+std::string string_format(char const *format, ...);
+std::string vstring_format(char const *format, va_list argptr);
 
 //--------------------------------------------------------------------------------------------------
 //! printf style formatted output to a buffer object. Use this when an actual instance of a string
 //! isn't required (i.e when passing a char const* to another function).
 //--------------------------------------------------------------------------------------------------
-formatted_buffer buffer_format(char const *pattern, ...);
-formatted_buffer vbuffer_format(char const *pattern, va_list argptr);
+formatted_buffer buffer_format(char const *format, ...);
+formatted_buffer vbuffer_format(char const *format, va_list argptr);
 
 #endif // CATA_OUTPUT_BASE_H
