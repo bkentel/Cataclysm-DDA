@@ -15,8 +15,8 @@ namespace detail {
 struct sprintf_string_buffer {
     enum : size_t { buffer_size = 15 }; // size of the small string optimization on MSVC.
 
-    void resize(size_t const new_size) {        
-        str.resize(new_size, '\0');
+    void resize(size_t const new_size) {
+        str.resize(new_size - 1, '\0'); // String makes enough room for the null terminator itself.
     }
     
     char* data() noexcept {
@@ -28,7 +28,7 @@ struct sprintf_string_buffer {
     }
 
     size_t size() const noexcept {
-        return str.size();
+        return str.size() + 1; // String has room for a final null.
     }
 
     std::string to_string() {
@@ -53,14 +53,12 @@ struct sprintf_array_buffer {
 
     using array_t = std::array<char, buffer_size>;
 
-    void resize(size_t const new_size) {
-        assert(new_size >= cur_size);
-
+    void resize(size_t const new_size) {  
         if (cur_size > buffer_size) {
-            str.resize(new_size, '\0');
+            str.resize(new_size - 1, '\0'); // string includes a null terminator
             data_ptr = &str[0];
         } else if (new_size > buffer_size) {
-            new (&str) std::string(new_size, '\0');
+            new (&str) std::string(new_size - 1, '\0'); // string includes a null terminator
             data_ptr = &str[0];
         }
 
@@ -152,8 +150,8 @@ struct sprintf_array_buffer {
 //--------------------------------------------------------------------------------------------------
 struct sprintf_result_base {
     // Tries to format using buffer.
-    // Returns 0 on both error or success, otherwise, returns a bigger buffer size to attempt.
-    static size_t try_format(char *buffer, size_t buffer_size, char const *format, va_list args);
+    // Returns -1 error or the size to try again with if greater than buffer_size.
+    static int try_format(char *buffer, size_t buffer_size, char const *format, va_list args);
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -172,10 +170,24 @@ struct sprintf_result {
     sprintf_result(char const* const format, va_list args)
       : buffer {}
     {
-        while (auto const result = sprintf_result_base::try_format(buffer.data(), buffer.size(),
-            format, args))
-        {
-            buffer.resize(result);
+        for (;;) {
+            auto const cur_size = buffer.size();
+
+            int const result = sprintf_result_base::try_format(buffer.data(), cur_size,
+                format, args);
+
+            if (result < 0) {
+                break; //error
+            }
+            
+            auto const new_size = static_cast<size_t>(result);
+
+            // resize if bigger or smaller than needed.
+            buffer.resize(new_size);
+            
+            if (new_size <= cur_size) {
+                break; //ok
+            }
         }
     }
 

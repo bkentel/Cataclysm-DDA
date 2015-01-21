@@ -34,32 +34,30 @@ void set_error_string(char *const buffer, size_t const buffer_size,
 //--------------------------------------------------------------------------------------------------
 // MSVC implementation.
 //--------------------------------------------------------------------------------------------------
-size_t detail::sprintf_result_base::try_format(char *const buffer, size_t const buffer_size,
+int detail::sprintf_result_base::try_format(char *const buffer, size_t const buffer_size,
     char const *const format, va_list args)
 {
     int const result = _vscprintf_p(format, args);
     if (result == -1) {
         set_error_string(buffer, buffer_size, format, errno);
-        return 0;
+        return -1;
     }
 
-    auto const required_size = static_cast<size_t>(result + 1);
-
-    if (required_size > buffer_size) {
-        return required_size;
+    int const required_size = result + 1; //one more for the null
+    if (required_size <= buffer_size) {
+        _vsprintf_p(buffer, buffer_size, format, args);
     }
 
-    _vsprintf_p(buffer, buffer_size, format, args);
-
-    return 0;
+    return required_size;
 }
 #else
 //--------------------------------------------------------------------------------------------------
 // General implementation; no positional arguments on MSVC
 //--------------------------------------------------------------------------------------------------
-size_t detail::sprintf_result_base::try_format(char *const buffer, size_t const buffer_size,
+int detail::sprintf_result_base::try_format(char *const buffer, size_t const buffer_size,
     char const *const format, va_list args)
 {
+    // Clear errno before trying
     errno = 0;
 
     va_list args_copy;
@@ -67,21 +65,17 @@ size_t detail::sprintf_result_base::try_format(char *const buffer, size_t const 
     auto const result = vsnprintf(buffer, buffer_size, format, args_copy);
     va_end(args_copy);
 
+    // Depending on the platform, it could be an error or a request for a bigger buffer.
     if (result < 0) {
         if (auto const e_code = errno) {
             set_error_string(buffer, buffer_size, format, e_code);
-            return 0;
-        } else {
-            return buffer_size * 2;
+            return -1;
         }
+        
+        return buffer_size * 2; // Have to grow by an unknown amount; try double the current.
     }
-
-    auto const size = static_cast<size_t>(result);
-    if (size >= buffer_size) {
-        return size + 1;
-    }
-
-    return 0;
+    
+    return result + 1; //1 more for the null
 }
 #endif
 
