@@ -2,18 +2,20 @@
 #define CATA_OUTPUT_BASE_H
 
 #include <array>
+#include <vector>
 #include <string>
 #include <cstdarg>
 
 //--------------------------------------------------------------------------------------------------
-//! A buffer optimised for use as a C-string.
+//! A buffer optimized for use as a C-string.
 //! First uses a stack allocated buffer, and once exhaused switches to a heap allocated buffer.
 //! Implemented as a discriminated union; mind the boilerplate.
 //--------------------------------------------------------------------------------------------------
 struct formatted_buffer {
     enum : size_t { intial_buffer_size = 512 };
 
-    using array_t = std::array<char, intial_buffer_size>;
+    using array_t  = std::array<char, intial_buffer_size>;
+    using vector_t = std::vector<char>;
 
     formatted_buffer() noexcept {
         new (&arr) array_t;
@@ -21,57 +23,53 @@ struct formatted_buffer {
     }
 
     formatted_buffer(formatted_buffer &&other) noexcept
-      : cur_size {other.cur_size}, is_dynamic {other.is_dynamic}
+      : cur_size {other.cur_size}, is_static {other.is_static}
     {
-        if (is_dynamic) {
-            new (&str) std::string(std::move(other.str));
-        } else {
+        if (is_static) {
             new (&arr) array_t(std::move(other.arr));
+        } else {
+            new (&vec) vector_t(std::move(other.vec));
         }
     }
 
     formatted_buffer& operator=(formatted_buffer &&rhs) noexcept {
         this->~formatted_buffer();
 
-        if (rhs.is_dynamic) {
-            new (&str) std::string(std::move(rhs.str));
-        } else {
+        if (rhs.is_static) {
             new (&arr) array_t(std::move(rhs.arr));
+        } else {
+            new (&vec) vector_t(std::move(rhs.vec));
         }
 
         cur_size = rhs.cur_size;
-        is_dynamic = rhs.is_dynamic;
+        is_static = rhs.is_static;
 
         return *this;
     }
 
     ~formatted_buffer() {
-        if (is_dynamic) {
-            str.~basic_string();
+        if (!is_static) {
+            vec.~vector();
         }
     }
 
     size_t resize(size_t const new_size) {
-        if (is_dynamic) {
-            str.resize(new_size - 1, '\0');             // string includes a null terminator (-1)
+        if (!is_static) {
+            vec.resize(new_size, '\0');
         } else if (new_size > intial_buffer_size) {
-            new (&str) std::string(new_size - 1, '\0'); // string includes a null terminator (-1)
-            is_dynamic = true;
+            new (&vec) vector_t(new_size, '\0');
+            is_static = false;
         }
 
         return (cur_size = new_size);
     }
 
     char* data() noexcept {
-        return !is_dynamic ? &arr[0] : &str[0];
+        return is_static ? &arr[0] : &vec[0];
     }
 
     char const* c_str() const noexcept {
-        return !is_dynamic ? &arr[0] : &str[0];
-    }
-
-    std::string to_string() {
-        return !is_dynamic ? std::string(&arr[0], cur_size) : std::move(str);
+        return is_static ? &arr[0] : &vec[0];
     }
 
     size_t size() const noexcept {
@@ -84,20 +82,20 @@ struct formatted_buffer {
         return lhs;
     } 
 
-#if defined(_MSC_VER)            // momentarial disable a spurious warning
+#if defined(_MSC_VER)            // Momentarily disable a spurious warning
 #   pragma warning(push)         // on MSVC 2015 about
 #   pragma warning(disable:4624) // an implicitly deleted destructor in the union.
 #endif
     union {
-        array_t     arr;
-        std::string str;
+        array_t  arr;
+        vector_t vec;
     };
 #if defined(_MSC_VER)
 #   pragma warning(pop)
 #endif
 
-    size_t cur_size   = intial_buffer_size;
-    bool   is_dynamic = false;
+    size_t cur_size  = intial_buffer_size;
+    bool   is_static = true;
 };
 
 //--------------------------------------------------------------------------------------------------

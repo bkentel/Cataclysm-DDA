@@ -55,7 +55,7 @@ void string_copy(char *const dst, size_t const dst_size, char const *src) noexce
 #endif
 //--------------------------------------------------------------------------------------------------
 void set_error_string(char *const buffer, size_t const buffer_size,
-    char const* const format, int const e_code)
+    char const *const format, int const e_code)
 {
     string_copy(buffer, buffer_size, "Error when formatting string.");
 
@@ -64,8 +64,7 @@ void set_error_string(char *const buffer, size_t const buffer_size,
 }
 
 //--------------------------------------------------------------------------------------------------
-//! A buffer optimised for making into a std::string.
-//! Use a string's internal buffer.
+//! A buffer via a std::string.
 //--------------------------------------------------------------------------------------------------
 struct sprintf_string_buffer {
     enum : size_t { buffer_size = 16 }; // size of the small string optimization on MSVC.
@@ -82,10 +81,6 @@ struct sprintf_string_buffer {
 
     size_t size() const noexcept {
         return str.size() + 1; // String has room for a final null.
-    }
-
-    std::string to_string() {
-        return std::move(str);
     }
 
     sprintf_string_buffer() {
@@ -110,7 +105,7 @@ int try_format(char *const buffer, size_t const buffer_size, char const *const f
 
     // Plus one more for the null
     int const required_size = result + 1;
-    if (required_size <= buffer_size) {
+    if (static_cast<size_t>(required_size) <= buffer_size) {
         _vsprintf_p(buffer, buffer_size, format, args);
     }
 
@@ -133,7 +128,7 @@ int try_format(char *const buffer, size_t const buffer_size, char const *const f
     // Standard conformant versions return -1 on error only.
     // Some non-standard versions return -1 to indicate a bigger buffer is needed.
     if (result < 0) {
-        // Was it actually an errror?
+        // Was it actually an error?
         if (auto const e_code = errno) {
             set_error_string(buffer, buffer_size, format, e_code);
             return -1;
@@ -184,7 +179,7 @@ std::string string_format(char const *const format, ...)
 //--------------------------------------------------------------------------------------------------
 std::string vstring_format(char const *const format, va_list argptr)
 {
-    return try_format(sprintf_string_buffer {}, format, argptr).to_string();
+    return try_format(sprintf_string_buffer {}, format, argptr).str;
 }
 
 //--------------------------------------------------------------------------------------------------
