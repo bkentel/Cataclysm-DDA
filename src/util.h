@@ -9,20 +9,18 @@
 // make_unique as defined by C++14.
 //--------------------------------------------------------------------------------------------------
 template <typename T, typename... Args>
-inline typename std::enable_if<
-    !std::is_array<T>::value,
+inline typename std::enable_if<!std::is_array<T>::value,
     std::unique_ptr<T>>::type
 make_unique(Args&&... args) {
     return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 
 template <typename T>
-inline typename std::enable_if<
-    std::is_array<T>::value && std::extent<T>::value == 0,
+inline typename std::enable_if<std::is_array<T>::value && std::extent<T>::value == 0,
     std::unique_ptr<T>>::type
 make_unique(size_t const size) {
     using elem_t = typename std::remove_extent<T>::type;
-	return std::unique_ptr<T>(new elem_t[size]());
+    return std::unique_ptr<T>(new elem_t[size]());
 }
 
 template <typename T, typename... Args>
