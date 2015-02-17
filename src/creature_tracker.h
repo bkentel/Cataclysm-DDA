@@ -10,8 +10,9 @@
 class Creature_tracker
 {
     public:
-        Creature_tracker();
+        Creature_tracker() = default;
         ~Creature_tracker();
+        monster *try_find(int index);
         /** Returns the monster at the given index. */
         monster &find(int index);
         /** Returns the monster index of the monster at the given point. */

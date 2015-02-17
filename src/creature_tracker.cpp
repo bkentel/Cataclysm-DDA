@@ -3,13 +3,15 @@
 #include "output.h"
 #include "debug.h"
 
-Creature_tracker::Creature_tracker()
-{
-}
-
 Creature_tracker::~Creature_tracker()
 {
     clear();
+}
+
+monster* Creature_tracker::try_find(int const index)
+{
+    return (index >= 0 && index < static_cast<int>(_old_monsters_list.size())) ?
+        &find(index) : nullptr;
 }
 
 monster &Creature_tracker::find(int index)

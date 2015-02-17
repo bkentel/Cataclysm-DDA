@@ -530,8 +530,6 @@ void game::setup()
     monstairx = -1;
     monstairy = -1;
     monstairz = -1;
-    last_target = -1;  // We haven't targeted any monsters yet
-    last_target_was_npc = false;
     new_game = true;
     uquit = QUIT_NO;   // We haven't quit the game
     bVMonsterLookFire = true;
@@ -6787,11 +6785,6 @@ bool game::update_zombie_pos(const monster &critter, const int newx, const int n
 
 void game::remove_zombie(const int idx)
 {
-    if( last_target == idx && !last_target_was_npc ) {
-        last_target = -1;
-    } else if( last_target > idx && !last_target_was_npc ) {
-        last_target--;
-    }
     critter_tracker.remove(idx);
 }
 
@@ -9743,14 +9736,13 @@ int game::list_monsters(const int iLastState)
                 point recentered = look_around();
                 iLastActiveX = recentered.x;
                 iLastActiveY = recentered.y;
-            } else if (action == "fire") {
-                if( cCurMon != nullptr &&
-                    rl_dist( u.pos(), cCurMon->pos() ) <= iWeaponRange) {
-                    last_target = mon_at( cCurMon->posx(), cCurMon->posy() );
-                    u.view_offset_x = iStoreViewOffsetX;
-                    u.view_offset_y = iStoreViewOffsetY;
-                    return 2;
-                }
+            } else if (action == "fire" && cCurMon &&
+                rl_dist( u.pos(), cCurMon->pos() ) <= iWeaponRange)
+            {
+                set_target(cCurMon->posx(), cCurMon->posy());
+                u.view_offset_x = iStoreViewOffsetX;
+                u.view_offset_y = iStoreViewOffsetY;
+                return 2;
             }
 
             if (vMonsters.empty()) {
@@ -10445,84 +10437,6 @@ void game::plthrow(int pos)
 
     throw_item(u, x, y, thrown, trajectory);
     reenter_fullscreen();
-}
-
-// TODO: Put this into a header (which one?) and maybe move the implementation somewhere else.
-/** Comparator object to sort creatures according to their attitude from "u",
- * and (on same attitude) according to their distance to "u".
- */
-struct compare_by_dist_attitude {
-    const Creature &u;
-    bool operator()(Creature *a, Creature *b) const;
-};
-
-bool compare_by_dist_attitude::operator()(Creature *a, Creature *b) const
-{
-    const auto aa = u.attitude_to( *a );
-    const auto ab = u.attitude_to( *b );
-    if( aa != ab ) {
-        return aa < ab;
-    }
-    return rl_dist( a->pos(), u.pos() ) < rl_dist( b->pos(), u.pos() );
-}
-
-std::vector<point> game::pl_target_ui(int &x, int &y, int range, item *relevant, target_mode mode,
-                                      int default_target_x, int default_target_y)
-{
-    // Populate a list of targets with the zombies in range and visible
-    const Creature *last_target_critter = NULL;
-    if (last_target >= 0 && !last_target_was_npc && size_t(last_target) < num_zombies()) {
-        last_target_critter = &zombie(last_target);
-    } else if (last_target >= 0 && last_target_was_npc && size_t(last_target) < active_npc.size()) {
-        last_target_critter = active_npc[last_target];
-    }
-    auto mon_targets = u.get_visible_creatures( range );
-    std::sort(mon_targets.begin(), mon_targets.end(), compare_by_dist_attitude { u } );
-    int passtarget = -1;
-    for (size_t i = 0; i < mon_targets.size(); i++) {
-        Creature &critter = *mon_targets[i];
-        critter.draw(w_terrain, u.posx(), u.posy(), true);
-        // no default target, but found the last target
-        if (default_target_x == -1 && last_target_critter == &critter) {
-            passtarget = i;
-            break;
-        }
-        if (default_target_x == critter.posx() && default_target_y == critter.posy()) {
-            passtarget = i;
-            break;
-        }
-    }
-    // target() sets x and y, and returns an empty vector if we canceled (Esc)
-    std::vector <point> trajectory = target(x, y, u.posx() - range, u.posy() - range,
-                                            u.posx() + range, u.posy() + range,
-                                            mon_targets, passtarget, relevant, mode);
-
-    if (passtarget != -1) { // We picked a real live target
-        // Make it our default for next time
-        int id = npc_at(x, y);
-        if (id >= 0) {
-            last_target = id;
-            last_target_was_npc = true;
-            if(!active_npc[id]->is_enemy()){
-                if (!query_yn(_("Really attack %s?"), active_npc[id]->name.c_str())) {
-                    std::vector <point> trajectory_blank;
-                    return trajectory_blank; // Cancel the attack
-                } else {
-                    //The NPC knows we started the fight, used for morale penalty.
-                    active_npc[id]->hit_by_player = true;
-                }
-            }
-            active_npc[id]->make_angry();
-        } else {
-            id = mon_at(x, y);
-            if (id >= 0) {
-                last_target = id;
-                last_target_was_npc = false;
-                zombie(last_target).add_effect("hit_by_player", 100);
-            }
-        }
-    }
-    return trajectory;
 }
 
 void game::plfire(bool burst, int default_target_x, int default_target_y)

@@ -110,8 +110,6 @@ bool game::unserialize_legacy(std::ifstream & fin) {
                 safe_mode = SAFE_MODE_ON;
             }
             autosafemode = OPTIONS["AUTOSAFEMODE"];
-            last_target = tmptar;
-
             safemodeveh = OPTIONS["SAFEMODEVEH"];
 
             // Next, the scent map.
@@ -194,7 +192,6 @@ bool game::unserialize_legacy(std::ifstream & fin) {
             }
             autosafemode = OPTIONS["AUTOSAFEMODE"];
             safemodeveh = OPTIONS["SAFEMODEVEH"];
-            last_target = tmptar;
 
             // Next, the scent map.
             parseline();
@@ -306,7 +303,6 @@ bool game::unserialize_legacy(std::ifstream & fin) {
             }
             autosafemode = OPTIONS["AUTOSAFEMODE"];
             safemodeveh = OPTIONS["SAFEMODEVEH"];
-            last_target = tmptar;
 
             // Next, the scent map.
             parseline();
@@ -417,7 +413,6 @@ original 'structure', which globs game/weather/location & killcount/player data 
          }
          autosafemode = OPTIONS["AUTOSAFEMODE"];
          safemodeveh = OPTIONS["SAFEMODEVEH"];
-         last_target = tmptar;
 
         // Next, the scent map.
          for( auto &elem : grscent ) {

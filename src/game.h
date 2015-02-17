@@ -637,7 +637,8 @@ class game
         // finally calls target() and returns its result.
         std::vector<point> pl_target_ui(int &x, int &y, int range, item *relevent, target_mode mode,
                                         int default_target_x = -1, int default_target_y = -1);
-
+        // updates the current target to the monster (or npc) at x, y.
+        void set_target(int x, int y);
         // Map updating and monster spawning
         void replace_stair_monsters();
         void update_stair_monsters();
@@ -718,8 +719,6 @@ class game
 
         Creature_tracker critter_tracker;
 
-        int last_target; // The last monster targeted
-        bool last_target_was_npc;
         safe_mode_type safe_mode;
         std::vector<int> new_seen_mon;
         int mostseen;  // # of mons seen last turn; if this increases, set safe_mode to SAFE_MODE_STOP

@@ -17,6 +17,112 @@ int recoil_add(player &p, const item &gun);
 void make_gun_sound_effect(player &p, bool burst, item *weapon);
 extern bool is_valid_in_w_terrain(int, int);
 
+namespace {
+int  last_target         = -1;    // The last monster targeted.
+bool last_target_was_npc = false; // The last target was an npc.
+
+Creature const* get_last_target(Creature_tracker& creatures, std::vector<npc*>& npcs)
+{
+    if (last_target < 0) {
+        return nullptr;
+    }
+
+    if (last_target_was_npc) {
+        auto const index = static_cast<size_t>(last_target);
+        return index < npcs.size() ? npcs[index] : npcs.back();
+    } else {
+        return creatures.try_find(last_target);
+    }
+
+    return nullptr;
+}
+
+// returns {index, is_npc}
+std::pair<int, bool> get_creature_at(game& g, int const x, int const y)
+{
+    std::pair<int, bool> result {g.npc_at(x, y), true};
+
+    if (result.first < 0) {
+        result.first = g.mon_at(x, y);
+        result.second = false;
+    }
+
+    return result;
+}
+
+std::vector<Creature*> get_visible_by_attitude(player const &u, int const range)
+{
+    std::vector<Creature*> targets = u.get_visible_creatures(range);
+
+    std::sort(begin(targets), end(targets), [&](Creature const *const a, Creature const *const b) {
+        auto const att_a = u.attitude_to(*a);
+        auto const att_b = u.attitude_to(*b);
+        return (att_a != att_b) ? (att_a < att_b) :
+            rl_dist(a->pos(), u.pos()) < rl_dist(b->pos(), u.pos());
+    });
+
+    return targets;
+}
+
+} //namespace
+
+void game::set_target(int const x, int const y)
+{
+    std::tie(last_target, last_target_was_npc) = get_creature_at(*this, x, y);
+}
+
+std::vector<point> game::pl_target_ui(int &x, int &y, int const range, item *const relevant,
+    target_mode const mode, int const default_target_x, int const default_target_y)
+{
+    // Populate a list of targets with the zombies in range and visible
+    const Creature *last_target_critter = get_last_target(critter_tracker, active_npc);
+
+    std::vector<Creature*> targets = get_visible_by_attitude(u, range);
+    int passtarget = std::distance(begin(targets), find_if(
+        begin(targets), end(targets), [&](Creature const *c) {
+            return (default_target_x == -1 && last_target_critter == c) ||
+                   (default_target_x == c->posx() && default_target_y == c->posy()); }));
+
+    // TODO is this needed??
+    for (auto const &c : targets) {
+        c->draw(w_terrain, u.posx(), u.posy(), true);
+    }
+
+    // target() sets x and y, and returns an empty vector if we canceled (Esc)
+    std::vector<point> trajectory = target(x, y, u.posx() - range, u.posy() - range,
+        u.posx() + range, u.posy() + range, targets, passtarget, relevant, mode);
+
+    if (passtarget < 0) {
+        return trajectory; // No target
+    }
+
+    auto const target_info = get_creature_at(*this, x, y);
+    if (target_info.first < 0) {
+        return trajectory; // No target
+    }
+
+    // Ok. Make it our default for next time
+    if (target_info.second) {
+        npc &target = *active_npc[target_info.first];
+        
+        if (!target.is_enemy()) {
+            if (!query_yn(_("Really attack %s?"), target.name.c_str())) {
+                return {}; // Cancel the attack
+            } else {
+                //The NPC knows we started the fight, used for morale penalty.
+                target.hit_by_player = true;
+            }
+        }
+
+        target.make_angry();
+    } else {
+        zombie(target_info.first).add_effect("hit_by_player", 100);
+    }
+
+    std::tie(last_target, last_target_was_npc) = target_info;
+    return trajectory;
+}
+
 void splatter(std::vector<point> trajectory, int dam, Creature *target = NULL);
 
 double Creature::projectile_attack(const projectile &proj, int targetx, int targety,
@@ -808,12 +914,10 @@ void game::throw_item(player &p, int tarx, int tary, item &thrown,
     }
 }
 
-template<typename C>
-static char front_or( C container, char default_char  ) {
-    if( container.empty() ) {
-        return default_char;
-    }
-    return container.front();
+template <typename Container, typename T>
+auto front_or(Container const &container, T const &default) -> decltype(container.front())
+{
+    return container.empty() ? default : container.front();
 }
 
 // Draws the static portions of the targeting menu,

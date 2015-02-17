@@ -76,7 +76,6 @@ void game::serialize(std::ofstream & fout) {
         // basic game state information.
         json.member("turn", (int)calendar::turn);
         json.member("calendar_start", (int)calendar::start);
-        json.member( "last_target", (int)last_target );
         json.member( "run_mode", (int)safe_mode );
         json.member( "mostseen", mostseen );
         json.member( "nextspawn", (int)nextspawn );
@@ -216,7 +215,6 @@ void game::unserialize(std::ifstream & fin)
         }
         autosafemode = OPTIONS["AUTOSAFEMODE"];
         safemodeveh = OPTIONS["SAFEMODEVEH"];
-        last_target = tmptar;
 
         linebuf="";
         if ( data.read("grscent",linebuf) ) {
