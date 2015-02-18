@@ -40,15 +40,15 @@ class Skill
             return _id;
         }
 
-        std::string ident() const
+        std::string const& ident() const
         {
             return _ident;
         }
-        std::string name() const
+        std::string const& name() const
         {
             return _name;
         }
-        std::string description() const
+        std::string const& description() const
         {
             return _description;
         }

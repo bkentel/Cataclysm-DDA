@@ -540,7 +540,7 @@ bool Character::worn_with_flag( std::string flag ) const
     return false;
 }
 
-SkillLevel& Character::skillLevel(std::string ident)
+SkillLevel& Character::skillLevel(std::string const &ident)
 {
     return _skills[Skill::skill(ident)];
 }

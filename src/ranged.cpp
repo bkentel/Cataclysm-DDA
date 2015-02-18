@@ -21,7 +21,7 @@ namespace {
 int  last_target         = -1;    // The last monster targeted.
 bool last_target_was_npc = false; // The last target was an npc.
 
-Creature const* get_last_target(Creature_tracker& creatures, std::vector<npc*>& npcs)
+Creature const* get_last_target(Creature_tracker &creatures, std::vector<npc*> &npcs)
 {
     if (last_target < 0) {
         return nullptr;
@@ -33,12 +33,10 @@ Creature const* get_last_target(Creature_tracker& creatures, std::vector<npc*>& 
     } else {
         return creatures.try_find(last_target);
     }
-
-    return nullptr;
 }
 
 // returns {index, is_npc}
-std::pair<int, bool> get_creature_at(game& g, int const x, int const y)
+std::pair<int, bool> get_creature_at(game const &g, int const x, int const y)
 {
     std::pair<int, bool> result {g.npc_at(x, y), true};
 
@@ -914,12 +912,6 @@ void game::throw_item(player &p, int tarx, int tary, item &thrown,
     }
 }
 
-template <typename Container, typename T>
-auto front_or(Container const &container, T const &default) -> decltype(container.front())
-{
-    return container.empty() ? default : container.front();
-}
-
 // Draws the static portions of the targeting menu,
 // returns the number of lines used to draw instructions.
 static int draw_targeting_window( WINDOW *w_target, item *relevant, player &p, target_mode mode,
@@ -967,26 +959,30 @@ static int draw_targeting_window( WINDOW *w_target, item *relevant, player &p, t
             text_y -= 2;
         }
     }
+
     // The -1 is the -2 from above, but adjustted since this is a total, not an index.
     int lines_used = getmaxy(w_target) - 1 - text_y;
     mvwprintz(w_target, text_y++, 1, c_white, _("Move cursor to target with directional keys"));
     if( relevant ) {
+        auto const front_or = [&](std::string const &s, char const fallback) {
+            auto const keys = ctxt.keys_bound_to(s);
+            return keys.empty() ? fallback : keys.front();
+        };
+
         mvwprintz( w_target, text_y++, 1, c_white, _("%c %c Cycle targets; %c to fire."),
-                   front_or( ctxt.keys_bound_to("PREV_TARGET"), ' ' ),
-                   front_or( ctxt.keys_bound_to("NEXT_TARGET"), ' ' ),
-                   front_or( ctxt.keys_bound_to("FIRE"), ' ' ) );
+                   front_or("PREV_TARGET", ' '), front_or("NEXT_TARGET", ' '),
+                   front_or("FIRE", ' ') );
         mvwprintz( w_target, text_y++, 1, c_white, _("%c target self; %c toggle snap-to-target"),
-                   front_or( ctxt.keys_bound_to("CENTER"), ' ' ),
-                   front_or( ctxt.keys_bound_to("TOGGLE_SNAP_TO_TARGET"), ' ' ) );
+                   front_or("CENTER", ' ' ), front_or("TOGGLE_SNAP_TO_TARGET", ' ') );
         if( mode == TARGET_MODE_FIRE ) {
             mvwprintz( w_target, text_y++, 1, c_white, _("%c to steady your aim."),
-                       front_or( ctxt.keys_bound_to("AIM"), ' ' ) );
+                       front_or("AIM", ' ') );
             mvwprintz( w_target, text_y++, 1, c_white, _("%c to aim and fire."),
-                       front_or( ctxt.keys_bound_to("AIMED_SHOT"), ' ' ) );
+                       front_or("AIMED_SHOT", ' ') );
             mvwprintz( w_target, text_y++, 1, c_white, _("%c to take careful aim and fire."),
-                       front_or( ctxt.keys_bound_to("CAREFUL_SHOT"), ' ' ) );
+                       front_or("CAREFUL_SHOT", ' ') );
             mvwprintz( w_target, text_y++, 1, c_white, _("%c to take precise aim and fire."),
-                       front_or( ctxt.keys_bound_to("PRECISE_SHOT"), ' ' ) );
+                       front_or("PRECISE_SHOT", ' ') );
         }
     }
 
@@ -1351,63 +1347,40 @@ std::vector<point> game::target(int &x, int &y, int lowx, int lowy, int hix,
 
 int time_to_fire(player &p, const itype &firingt)
 {
-    const islot_gun *firing = firingt.gun.get();
-    int time = 0;
-    if (firing->skill_used == Skill::skill("pistol")) {
-        if (p.skillLevel("pistol") > 6) {
-            time = 10;
-        } else {
-            time = (80 - 10 * p.skillLevel("pistol"));
-        }
-    } else if (firing->skill_used == Skill::skill("shotgun")) {
-        if (p.skillLevel("shotgun") > 3) {
-            time = 70;
-        } else {
-            time = (150 - 25 * p.skillLevel("shotgun"));
-        }
-    } else if (firing->skill_used == Skill::skill("smg")) {
-        if (p.skillLevel("smg") > 5) {
-            time = 20;
-        } else {
-            time = (80 - 10 * p.skillLevel("smg"));
-        }
-    } else if (firing->skill_used == Skill::skill("rifle")) {
-        if (p.skillLevel("rifle") > 8) {
-            time = 30;
-        } else {
-            time = (150 - 15 * p.skillLevel("rifle"));
-        }
-    } else if (firing->skill_used == Skill::skill("archery")) {
-        if (p.skillLevel("archery") > 8) {
-            time = 20;
-        } else {
-            time = (220 - 25 * p.skillLevel("archery"));
-        }
-    } else if (firing->skill_used == Skill::skill("throw")) {
-        if (p.skillLevel("throw") > 6) {
-            time = 50;
-        } else {
-            time = (220 - 25 * p.skillLevel("throw"));
-        }
-    } else if (firing->skill_used == Skill::skill("launcher")) {
-        if (p.skillLevel("launcher") > 8) {
-            time = 30;
-        } else {
-            time = (200 - 20 * p.skillLevel("launcher"));
-        }
-    } else if(firing->skill_used == Skill::skill("melee")) { // right now, just whips
-        if (p.skillLevel("melee") > 8) {
-            time = 50;
-        } else {
-            time = (200 - (20 * p.skillLevel("melee")));
-        }
-    } else {
-        debugmsg("Why is shooting %s using %s skill?", firingt.nname(1).c_str(),
-                 firing->skill_used->name().c_str());
-        time =  0;
+    struct time_info_t {
+        int trivial_level;
+        int trivial_time;
+        int base;
+        int reduction;
+    };
+
+    static std::map<std::string, time_info_t> const map {
+        {std::string {"pistol"},   {6, 10, 80,  10}},
+        {std::string {"shotgun"},  {3, 70, 150, 25}},
+        {std::string {"smg"},      {5, 20, 80,  10}},
+        {std::string {"rifle"},    {8, 30, 150, 15}},
+        {std::string {"archery"},  {8, 20, 220, 25}},
+        {std::string {"throw"},    {6, 50, 220, 25}},
+        {std::string {"launcher"}, {8, 30, 200, 20}},
+        {std::string {"melee"},    {8, 50, 200, 20}}
+    };
+
+    auto const &skill_used = firingt.gun.get()->skill_used;
+    auto const it = map.find(skill_used->ident());
+    if (it == std::end(map)) {
+        debugmsg("Why is shooting %s using %s skill?",
+            firingt.nname(1).c_str(), skill_used->name().c_str());
+        return 0;
     }
 
-    return time;
+    time_info_t const &info = it->second;
+    auto const &player_skill = p.skillLevel(it->first);
+    
+    if (player_skill > info.trivial_level) {
+        return info.trivial_time;
+    } else {
+        return std::max(0, info.base - info.reduction * player_skill);
+    }
 }
 
 void make_gun_sound_effect(player &p, bool burst, item *weapon)
