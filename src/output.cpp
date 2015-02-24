@@ -1545,15 +1545,18 @@ std::string &capitalize_letter(std::string &str, size_t n)
 }
 
 //remove prefix of a strng, between c1 and c2, ie, "<prefix>remove it"
-std::string rm_prefix(std::string str, char c1, char c2)
+std::string rm_prefix(std::string str, char const c1, char const c2)
 {
-    if(!str.empty() && str[0] == c1) {
-        size_t pos = str.find_first_of(c2);
-        if(pos != std::string::npos) {
-            str = str.substr(pos + 1);
-        }
+    if (str.empty() || str[0] != c1) {
+        return str;
     }
-    return str;
+
+    size_t const pos = str.find(c2);
+    if (pos == std::string::npos) {
+        return str;
+    }
+
+    return str.erase(pos + 1);
 }
 
 // draw a menu-item-like string with highlighted shortcut character
