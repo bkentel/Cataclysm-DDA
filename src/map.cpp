@@ -3983,7 +3983,7 @@ bool map::add_field(const point p, const field_id t, int density, const int age)
     submap * const current_submap = get_submap_at(p.x, p.y, lx, ly);
     current_submap->is_uniform = false;
 
-    if( current_submap->fld[lx][ly].addField( t, density, age ) ) {
+    if( current_submap->fld[lx][ly].add( t, density, age ) ) {
         // TODO: Update overall field_count appropriately.
         // This is the spirit of "fd_null" that it used to be.
         current_submap->field_count++; //Only adding it to the count if it doesn't exist.

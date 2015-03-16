@@ -541,7 +541,7 @@ submap *mapbuffer::unserialize_submaps( const tripoint &p )
                         if (sm->fld[i][j].findField(field_id(type)) == NULL) {
                             sm->field_count++;
                         }
-                        sm->fld[i][j].addField(field_id(type), density, age);
+                        sm->fld[i][j].add(field_id(type), density, age);
                     }
                 }
             } else if( submap_member_name == "graffiti" ) {

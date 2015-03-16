@@ -1160,7 +1160,7 @@ static bool unserialize_legacy(std::ifstream & fin ) {
             fin >> itx >> ity >> t >> d >> a;
             if(!sm->fld[itx][ity].findField(field_id(t)))
              sm->field_count++;
-            sm->fld[itx][ity].addField(field_id(t), d, a);
+            sm->fld[itx][ity].add(field_id(t), d, a);
            } else if (string_identifier == "S") {
             char tmpfriend;
             int tmpfac = -1, tmpmis = -1;
@@ -1437,7 +1437,7 @@ static void unserialize_legacy_submaps( std::ifstream &fin, const int num_submap
                 if(!sm->fld[itx][ity].findField(field_id(t))) {
                     sm->field_count++;
                 }
-                sm->fld[itx][ity].addField(field_id(t), d, a);
+                sm->fld[itx][ity].add(field_id(t), d, a);
             } else if (string_identifier == "S") {
                 char tmpfriend;
                 int tmpfac = -1, tmpmis = -1;

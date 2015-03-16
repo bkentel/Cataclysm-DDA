@@ -683,10 +683,10 @@ bool cata_tiles::draw_from_id_string(std::string id, TILE_CATEGORY category,
                 col = v.color;
             }
         } else if (category == C_FIELD) {
-            const field_id fid = field_from_ident( id );
-            sym = fieldlist[fid].sym;
+            field_t const &fld get_field_def(field_from_ident(id));
+            sym = fid.sym;
             // TODO: field density?
-            col = fieldlist[fid].color[0];
+            col = fid.color[0];
         } else if (category == C_TRAP) {
             if (trapmap.count(id) > 0) {
                 const trap *t = traplist[trapmap[id]];
@@ -1024,7 +1024,7 @@ bool cata_tiles::draw_field_or_item(int x, int y)
     bool ret_draw_field = true;
     bool ret_draw_item = true;
     if (is_draw_field) {
-        const std::string fd_name = fieldlist[f.fieldSymbol()].id;
+        field_t const &fld = get_field_def(f.fieldSymbol());
 
         // for rotation inforomation
         const int neighborhood[4] = {
@@ -1037,7 +1037,7 @@ bool cata_tiles::draw_field_or_item(int x, int y)
         int subtile = 0, rotation = 0;
         get_tile_values(f.fieldSymbol(), neighborhood, subtile, rotation);
 
-        ret_draw_field = draw_from_id_string(fd_name, C_FIELD, empty_string, x, y, subtile, rotation);
+        ret_draw_field = draw_from_id_string(fld.id, C_FIELD, empty_string, x, y, subtile, rotation);
     }
     if(do_item) {
         if (!g->m.sees_some_items(x, y, g->u)) {

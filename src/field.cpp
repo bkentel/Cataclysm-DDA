@@ -8,7 +8,18 @@
 #define INBOUNDS(x, y) \
  (x >= 0 && x < SEEX * my_MAPSIZE && y >= 0 && y < SEEY * my_MAPSIZE)
 
-field_t fieldlist[num_fields];
+namespace {
+/*
+Controls the master listing of all possible field effects, indexed by a field_id. Does not store active fields, just metadata.
+*/
+std::array<field_t, num_fields> fieldlist;
+
+} //namespace
+
+field_t const& get_field_def(field_id const id)
+{
+    return fieldlist[static_cast<size_t>(id)];
+}
 
 void game::init_fields()
 {
@@ -316,8 +327,9 @@ void game::init_fields()
         }
 
     };
+
     for(int i = 0; i < num_fields; i++) {
-        fieldlist[i] = tmp_fields[i];
+        fieldlist[i] = std::move(tmp_fields[i]);
     }
 }
 
@@ -2101,11 +2113,9 @@ field_id field_entry::getFieldType() const{
     return type;
 }
 
-
 int field_entry::getFieldDensity() const{
     return density;
 }
-
 
 int field_entry::getFieldAge() const{
     return age;
@@ -2146,72 +2156,36 @@ int field_entry::setFieldAge(const int new_age){
     return age;
 }
 
-field::field()
-    : field_list()
-    , draw_symbol( fd_null )
+field_entry* field::find(field_id const id)
 {
+    const auto it = field_list.find(id);
+    return it != field_list.end() ? &it->second : nullptr;
 }
 
-field::~field()
+field_entry const* field::find(field_id const id) const
 {
+    return static_cast<field*>(this)->find(id);
 }
 
-/*
-Function: findField
-Returns a field entry corresponding to the field_id parameter passed in. If no fields are found then returns NULL.
-Good for checking for exitence of a field: if(myfield.findField(fd_fire)) would tell you if the field is on fire.
-*/
-field_entry *field::findField( const field_id field_to_find )
+bool field::add(const field_id id, const int new_density, const int new_age)
 {
-    const auto it = field_list.find( field_to_find );
-    if( it != field_list.end() ) {
-        return &it->second;
+    if (fieldlist[id].priority >= fieldlist[draw_symbol].priority) {
+        draw_symbol = id;
     }
-    return nullptr;
-}
 
-const field_entry *field::findFieldc( const field_id field_to_find ) const
-{
-    const auto it = field_list.find( field_to_find );
-    if( it != field_list.end() ) {
-        return &it->second;
-    }
-    return nullptr;
-}
-
-const field_entry *field::findField( const field_id field_to_find ) const
-{
-    return findFieldc( field_to_find );
-}
-
-/*
-Function: addfield
-Inserts the given field_id into the field list for a given tile if it does not already exist.
-Returns false if the field_id already exists, true otherwise.
-If the field already exists, it will return false BUT it will add the density/age to the current values for upkeep.
-If you wish to modify an already existing field use findField and modify the result.
-Density defaults to 1, and age to 0 (permanent) if not specified.
-*/
-bool field::addField(const field_id field_to_add, const int new_density, const int new_age){
-    auto it = field_list.find(field_to_add);
-    if (fieldlist[field_to_add].priority >= fieldlist[draw_symbol].priority)
-        draw_symbol = field_to_add;
-    if(it != field_list.end()) {
+    if (field_entry *entry = find(id)) {
         //Already exists, but lets update it. This is tentative.
-        it->second.setFieldDensity(it->second.getFieldDensity() + new_density);
+        entry->setFieldDensity(entry->getFieldDensity() + new_density);
         return false;
     }
-    field_list[field_to_add] = field_entry(field_to_add, new_density, new_age);
+
+    field_list[id] = field_entry(id, new_density, new_age);
     return true;
 }
 
-/*
-Function: removeField
-Removes the field entry with a type equal to the field_id parameter.
-Returns the next iterator or field_list.end().
-*/
-std::map<field_id, field_entry>::iterator field::removeField(const field_id field_to_remove){
-    auto it = field_list.find(field_to_remove);
+std::map<field_id, field_entry>::iterator field::remove(const field_id id)
+{
+    auto it = field_list.find(id);
     if(it != field_list.end()) {
         field_list.erase(it++);
         if (field_list.empty()) {
@@ -2228,11 +2202,7 @@ std::map<field_id, field_entry>::iterator field::removeField(const field_id fiel
     return it;
 }
 
-/*
-Function: fieldCount
-Returns the number of fields existing on the current tile.
-*/
-unsigned int field::fieldCount() const
+size_t field::fieldCount() const
 {
     return field_list.size();
 }
