@@ -62,7 +62,7 @@ bool monster::can_move_to(int x, int y) const
 
         // don't enter fire or electricity ever
         const field &local_field = g->m.field_at(x, y);
-        if (local_field.findField(fd_fire) || local_field.findField(fd_electricity))
+        if (local_field.find(fd_fire) || local_field.find(fd_electricity))
             return false;
     }
     return true;

@@ -3,6 +3,7 @@
 #include "game.h"
 #include "lightmap.h"
 #include "options.h"
+#include "field.h"
 
 #include <cmath>
 
@@ -54,49 +55,11 @@ void map::build_transparency_cache()
                     const int y = sy + smy * SEEY;
 
                     auto &value = transparency_cache[x][y];
-
                     if( !(terlist [cur_submap->ter[sx][sy]].transparent &&
                           furnlist[cur_submap->frn[sx][sy]].transparent) ) {
                         value = LIGHT_TRANSPARENCY_SOLID;
-                        continue;
-                    }
-
-                    for( auto const &fld : cur_submap->fld[sx][sy] ) {
-                        const field_entry &cur = fld.second;
-                        const field_id type = cur.getFieldType();
-                        const int density = cur.getFieldDensity();
-
-                        if( fieldlist[type].transparent[density - 1] ) {
-                            continue;
-                        }
-
-                        // Fields are either transparent or not, however we want some to be translucent
-                        switch (type) {
-                        case fd_cigsmoke:
-                        case fd_weedsmoke:
-                        case fd_cracksmoke:
-                        case fd_methsmoke:
-                        case fd_relax_gas:
-                            value *= 0.7;
-                            break;
-                        case fd_smoke:
-                        case fd_incendiary:
-                        case fd_toxic_gas:
-                        case fd_tear_gas:
-                            if (density == 3) {
-                                value = LIGHT_TRANSPARENCY_SOLID;
-                            } else if (density == 2) {
-                                value *= 0.5;
-                            }
-                            break;
-                        case fd_nuke_gas:
-                            value *= 0.5;
-                            break;
-                        default:
-                            value = LIGHT_TRANSPARENCY_SOLID;
-                            break;
-                        }
-                        // TODO: [lightmap] Have glass reduce light as well
+                    } else {
+                        value = cur_submap->fld[sx][sy].transparency();
                     }
                 }
             }
@@ -177,7 +140,8 @@ void map::generate_lightmap()
                             }
                         }
                     }
-
+                    
+                    // TODO: [lightmap] Have glass reduce light as well
                     if (cur_submap->lum[sx][sy]) {
                         auto items = i_at(x, y);
                         add_light_from_items(x, y, items.begin(), items.end());
@@ -192,57 +156,7 @@ void map::generate_lightmap()
                         add_light_source(x, y, 35 );
                     }
 
-                    for( auto &fld : cur_submap->fld[sx][sy] ) {
-                        const field_entry *cur = &fld.second;
-                        // TODO: [lightmap] Attach light brightness to fields
-                        switch(cur->getFieldType()) {
-                        case fd_fire:
-                            if (3 == cur->getFieldDensity()) {
-                                add_light_source(x, y, 160);
-                            } else if (2 == cur->getFieldDensity()) {
-                                add_light_source(x, y, 60);
-                            } else {
-                                add_light_source(x, y, 16);
-                            }
-                            break;
-                        case fd_fire_vent:
-                        case fd_flame_burst:
-                            add_light_source(x, y, 8);
-                            break;
-                        case fd_electricity:
-                        case fd_plasma:
-                            if (3 == cur->getFieldDensity()) {
-                                add_light_source(x, y, 8);
-                            } else if (2 == cur->getFieldDensity()) {
-                                add_light_source(x, y, 1);
-                            } else {
-                                apply_light_source(x, y, LIGHT_SOURCE_LOCAL,
-                                                   trigdist);    // kinda a hack as the square will still get marked
-                            }
-                            break;
-                        case fd_incendiary:
-                            if (3 == cur->getFieldDensity()) {
-                                add_light_source(x, y, 30);
-                            } else if (2 == cur->getFieldDensity()) {
-                                add_light_source(x, y, 16);
-                            } else {
-                                add_light_source(x, y, 8);
-                            }
-                            break;
-                        case fd_laser:
-                            apply_light_source(x, y, 1, trigdist);
-                            break;
-                        case fd_spotlight:
-                            add_light_source(x, y, 20);
-                            break;
-                        case fd_dazzling:
-                            add_light_source(x, y, 2);
-                            break;
-                        default:
-                            //Suppress warnings
-                            break;
-                        }
-                    }
+                    add_light_source(x, y, cur_submap->fld[sx][sy].luminance());
                 }
             }
         }

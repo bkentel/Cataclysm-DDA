@@ -1158,7 +1158,7 @@ static bool unserialize_legacy(std::ifstream & fin ) {
             sm->set_furn(itx, ity, furn_id(furn_key[t]));
            } else if (string_identifier == "F") {
             fin >> itx >> ity >> t >> d >> a;
-            if(!sm->fld[itx][ity].findField(field_id(t)))
+            if(!sm->fld[itx][ity].find(field_id(t)))
              sm->field_count++;
             sm->fld[itx][ity].add(field_id(t), d, a);
            } else if (string_identifier == "S") {
@@ -1434,7 +1434,7 @@ static void unserialize_legacy_submaps( std::ifstream &fin, const int num_submap
                 sm->set_furn(itx, ity, furn_id(furn_key[t]));
             } else if (string_identifier == "F") {
                 fin >> itx >> ity >> t >> d >> a;
-                if(!sm->fld[itx][ity].findField(field_id(t))) {
+                if(!sm->fld[itx][ity].find(field_id(t))) {
                     sm->field_count++;
                 }
                 sm->fld[itx][ity].add(field_id(t), d, a);

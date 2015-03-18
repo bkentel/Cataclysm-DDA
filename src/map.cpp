@@ -1682,12 +1682,12 @@ bool map::moppable_items_at(const int x, const int y)
         }
     }
     const field &fld = field_at(x, y);
-    if(fld.findField(fd_blood) != 0 || fld.findField(fd_blood_veggy) != 0 ||
-          fld.findField(fd_blood_insect) != 0 || fld.findField(fd_blood_invertebrate) != 0
-          || fld.findField(fd_gibs_flesh) != 0 || fld.findField(fd_gibs_veggy) != 0 ||
-          fld.findField(fd_gibs_insect) != 0 || fld.findField(fd_gibs_invertebrate) != 0
-          || fld.findField(fd_bile) != 0 || fld.findField(fd_slime) != 0 ||
-          fld.findField(fd_sludge) != 0) {
+    if(fld.find(fd_blood) != 0 || fld.find(fd_blood_veggy) != 0 ||
+          fld.find(fd_blood_insect) != 0 || fld.find(fd_blood_invertebrate) != 0
+          || fld.find(fd_gibs_flesh) != 0 || fld.find(fd_gibs_veggy) != 0 ||
+          fld.find(fd_gibs_insect) != 0 || fld.find(fd_gibs_invertebrate) != 0
+          || fld.find(fd_bile) != 0 || fld.find(fd_slime) != 0 ||
+          fld.find(fd_sludge) != 0) {
         return true;
     }
     int vpart;
@@ -1714,8 +1714,6 @@ void map::decay_fields_and_scent( const int amount )
         }
     }
 
-    const int amount_liquid = amount / 3; // Decay washable fields (blood, guts etc.) by this
-    const int amount_gas = amount / 5; // Decay gas type fields by this
     // Coord code copied from lightmap calculations
     for( int smx = 0; smx < my_MAPSIZE; ++smx ) {
         for( int smy = 0; smy < my_MAPSIZE; ++smy ) {
@@ -1735,47 +1733,8 @@ void map::decay_fields_and_scent( const int amount )
                         continue;
                     }
 
-                    field &fields = cur_submap->fld[sx][sy];
-                    for( auto &fp : fields ) {
-                        to_proc--;
-                        field_entry &cur = fp.second;
-                        const field_id type = cur.getFieldType();
-                        switch( type ) {
-                            case fd_fire:
-                                cur.setFieldAge( cur.getFieldAge() + amount );
-                                break;
-                            case fd_blood:
-                            case fd_bile:
-                            case fd_gibs_flesh:
-                            case fd_gibs_veggy:
-                            case fd_slime:
-                            case fd_blood_veggy:
-                            case fd_blood_insect:
-                            case fd_blood_invertebrate:
-                            case fd_gibs_insect:
-                            case fd_gibs_invertebrate:
-                                cur.setFieldAge( cur.getFieldAge() + amount_liquid );
-                                break;
-                            case fd_smoke:
-                            case fd_toxic_gas:
-                            case fd_tear_gas:
-                            case fd_nuke_gas:
-                            case fd_cigsmoke:
-                            case fd_weedsmoke:
-                            case fd_cracksmoke:
-                            case fd_methsmoke:
-                            case fd_relax_gas:
-                            case fd_fungal_haze:
-                            case fd_hot_air1:
-                            case fd_hot_air2:
-                            case fd_hot_air3:
-                            case fd_hot_air4:
-                                cur.setFieldAge( cur.getFieldAge() + amount_gas );
-                                break;
-                            default:
-                                break;
-                        }
-                    }
+                    cur_submap->fld[sx][sy].decay(amount);
+                    to_proc -= cur_submap->fld[sx][sy].size();
                 }
             }
         }
@@ -3878,21 +3837,6 @@ void map::remove_trap(const int x, const int y)
         traplocs[t].erase( point( x, y ) );
     }
 }
-/*
- * Get wrapper for all fields at xy
- */
-const field &map::field_at( const int x, const int y ) const
-{
-    if( !inbounds( x, y ) ) {
-        nulfield = field();
-        return nulfield;
-    }
-
-    int lx, ly;
-    submap *const current_submap = get_submap_at( x, y, lx, ly );
-
-    return current_submap->fld[lx][ly];
-}
 
 field &map::get_field( const int x, const int y )
 {
@@ -3905,6 +3849,16 @@ field &map::get_field( const int x, const int y )
     submap *const current_submap = get_submap_at( x, y, lx, ly );
 
     return current_submap->fld[lx][ly];
+}
+
+field const& map::get_field(int x, int y) const
+{
+    return const_cast<map*>(this)->get_field(x, y);
+}
+
+const field &map::field_at( const int x, const int y ) const
+{
+    return const_cast<map*>(this)->get_field(x, y);
 }
 
 int map::adjust_field_age(const point p, const field_id t, const int offset) {
@@ -3920,8 +3874,7 @@ int map::adjust_field_strength(const point p, const field_id t, const int offset
  * returns resulting age or -1 if not present.
  */
 int map::set_field_age(const point p, const field_id t, const int age, bool isoffset) {
-    field_entry * field_ptr = get_field( p, t );
-    if ( field_ptr != NULL ) {
+    if (field_entry *field_ptr = get_field(p, t)) {
         int adj = ( isoffset ? field_ptr->getFieldAge() : 0 ) + age;
         field_ptr->setFieldAge( adj );
         return adj;
@@ -3933,9 +3886,8 @@ int map::set_field_age(const point p, const field_id t, const int age, bool isof
  * set strength of field type at point, creating if not present, removing if strength is 0
  * returns resulting strength, or 0 for not present
  */
-int map::set_field_strength(const point p, const field_id t, const int str, bool isoffset) {
-    field_entry * field_ptr = get_field( p, t );
-    if ( field_ptr != NULL ) {
+int map::set_field_strength(const point p, const field_id t, const int str, bool const isoffset) {
+    if (field_entry *field_ptr = get_field(p, t)) {
         int adj = ( isoffset ? field_ptr->getFieldDensity() : 0 ) + str;
         if ( adj > 0 ) {
             field_ptr->setFieldDensity( adj );
@@ -3950,20 +3902,26 @@ int map::set_field_strength(const point p, const field_id t, const int str, bool
     return 0;
 }
 
-int map::get_field_age( const point p, const field_id t ) {
-    field_entry * field_ptr = get_field( p, t );
-    return ( field_ptr == NULL ? -1 : field_ptr->getFieldAge() );
+int map::get_field_age( const point p, const field_id t ) const {
+    field_entry const *field_ptr = get_field( p, t );
+    return ( !field_ptr ? -1 : field_ptr->getFieldAge() );
 }
 
-int map::get_field_strength( const point p, const field_id t ) {
-    field_entry * field_ptr = get_field( p, t );
-    return ( field_ptr == NULL ? 0 : field_ptr->getFieldDensity() );
+int map::get_field_strength( const point p, const field_id t ) const {
+    field_entry const *field_ptr = get_field( p, t );
+    return ( !field_ptr ? 0 : field_ptr->getFieldDensity() );
 }
 
-field_entry * map::get_field( const point p, const field_id t ) {
+field_entry* map::get_field(const point p, const field_id t)
+{
     if (!INBOUNDS(p.x, p.y))
         return NULL;
-    return get_field( p.x, p.y ).findField(t);
+    return get_field( p.x, p.y ).find(t);
+}
+
+field_entry const* map::get_field(const point p, const field_id t) const
+{
+    return const_cast<map*>(this)->get_field(p, t);
 }
 
 bool map::add_field(const point p, const field_id t, int density, const int age)
@@ -4008,10 +3966,10 @@ void map::remove_field(const int x, const int y, const field_id field_to_remove)
  int lx, ly;
  submap * const current_submap = get_submap_at(x, y, lx, ly);
 
- if (current_submap->fld[lx][ly].findField(field_to_remove)) { //same as checking for fd_null in the old system
+ if (current_submap->fld[lx][ly].find(field_to_remove)) { //same as checking for fd_null in the old system
   current_submap->field_count--;
  }
- current_submap->fld[lx][ly].removeField(field_to_remove);
+ current_submap->fld[lx][ly].remove(field_to_remove);
 }
 
 computer* map::computer_at(const int x, const int y)
@@ -4228,11 +4186,10 @@ void map::drawsq(WINDOW* w, player &u, const int x, const int y, const bool inve
             sym = traplist[curr_trap]->sym;
         }
     }
-    if (curr_field.fieldCount() > 0) {
-        const field_id& fid = curr_field.fieldSymbol();
-        const field_entry* fe = curr_field.findField(fid);
-        const field_t& f = fieldlist[fid];
-        if (f.sym == '&' || fe == NULL) {
+    if (!curr_field.empty()) {
+        field_id const &fid  = curr_field.symbol();
+        field_t  const &f    = get_field_def(fid);
+        if (f.sym == '&') {
             // Do nothing, a '&' indicates invisible fields.
         } else if (f.sym == '*') {
             // A random symbol.
@@ -4262,7 +4219,10 @@ void map::drawsq(WINDOW* w, player &u, const int x, const int y, const bool inve
                 // non-default field symbol -> field symbol overrides terrain
                 sym = f.sym;
             }
-            tercol = f.color[fe->getFieldDensity() - 1];
+
+            if (auto const fe = curr_field.find(fid)) {
+                tercol = f.color[fe->getFieldDensity() - 1];
+            }
         }
     }
 

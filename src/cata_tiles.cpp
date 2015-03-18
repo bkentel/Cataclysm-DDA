@@ -683,10 +683,10 @@ bool cata_tiles::draw_from_id_string(std::string id, TILE_CATEGORY category,
                 col = v.color;
             }
         } else if (category == C_FIELD) {
-            field_t const &fld get_field_def(field_from_ident(id));
-            sym = fid.sym;
+            field_t const &fld = get_field_def(field_from_ident(id));
+            sym = fld.sym;
             // TODO: field density?
-            col = fid.color[0];
+            col = fld.color[0];
         } else if (category == C_TRAP) {
             if (trapmap.count(id) > 0) {
                 const trap *t = traplist[trapmap[id]];
@@ -980,7 +980,7 @@ bool cata_tiles::draw_field_or_item(int x, int y)
 {
     // check for field
     const field &f = g->m.field_at(x, y);
-    field_id f_id = f.fieldSymbol();
+    field_id f_id = f.symbol();
     bool is_draw_field;
     bool do_item;
     switch(f_id) {
@@ -1024,18 +1024,18 @@ bool cata_tiles::draw_field_or_item(int x, int y)
     bool ret_draw_field = true;
     bool ret_draw_item = true;
     if (is_draw_field) {
-        field_t const &fld = get_field_def(f.fieldSymbol());
+        field_t const &fld = get_field_def(f.symbol());
 
         // for rotation inforomation
         const int neighborhood[4] = {
-            static_cast<int> (g->m.field_at(x, y + 1).fieldSymbol()), // south
-            static_cast<int> (g->m.field_at(x + 1, y).fieldSymbol()), // east
-            static_cast<int> (g->m.field_at(x - 1, y).fieldSymbol()), // west
-            static_cast<int> (g->m.field_at(x, y - 1).fieldSymbol()) // north
+            static_cast<int> (g->m.field_at(x, y + 1).symbol()), // south
+            static_cast<int> (g->m.field_at(x + 1, y).symbol()), // east
+            static_cast<int> (g->m.field_at(x - 1, y).symbol()), // west
+            static_cast<int> (g->m.field_at(x, y - 1).symbol()) // north
         };
 
         int subtile = 0, rotation = 0;
-        get_tile_values(f.fieldSymbol(), neighborhood, subtile, rotation);
+        get_tile_values(f.symbol(), neighborhood, subtile, rotation);
 
         ret_draw_field = draw_from_id_string(fld.id, C_FIELD, empty_string, x, y, subtile, rotation);
     }

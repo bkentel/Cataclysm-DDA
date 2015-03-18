@@ -5,8 +5,12 @@
 #include "monstergenerator.h"
 #include "messages.h"
 
+#include <algorithm>
+
 #define INBOUNDS(x, y) \
  (x >= 0 && x < SEEX * my_MAPSIZE && y >= 0 && y < SEEY * my_MAPSIZE)
+
+
 
 namespace {
 /*
@@ -23,309 +27,367 @@ field_t const& get_field_def(field_id const id)
 
 void game::init_fields()
 {
-    field_t tmp_fields[num_fields] =
-    {
+    field_t tmp_fields[num_fields] = {
         {
-            "fd_null",
-            {"", "", ""}, '%', 0,
-            {c_white, c_white, c_white}, {true, true, true}, {false, false, false}, 0,
-            {0,0,0}
-        },
-        {
-            "fd_blood",
-            {_("blood splatter"), _("blood stain"), _("puddle of blood")}, '%', 0,
-            {c_red, c_red, c_red}, {true, true, true}, {false, false, false}, 28800,
-            {0,0,0}
+            "fd_null", '%', 0, 0, field_t::decay_type::none,
+            {"", "", ""},
+            {c_white, c_white, c_white},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
         },
         {
-            "fd_bile",
-            {_("bile splatter"), _("bile stain"), _("puddle of bile")}, '%', 0,
-            {c_pink, c_pink, c_pink}, {true, true, true}, {false, false, false}, 14400,
-            {0,0,0}
-        },
-
-        {
-            "fd_gibs_flesh",
-            {_("scraps of flesh"), _("bloody meat chunks"), _("heap of gore")}, '~', 0,
-            {c_brown, c_ltred, c_red}, {true, true, true}, {false, false, false}, 28800,
-            {0,0,0}
-        },
-
-        {
-            "fd_gibs_veggy",
-            {_("shredded leaves and twigs"), _("shattered branches and leaves"), _("broken vegetation tangle")}, '~', 0,
-            {c_ltgreen, c_ltgreen, c_green}, {true, true, true}, {false, false, false}, 28800,
-            {0,0,0}
-        },
-
-        {
-            "fd_web",
-            {_("cobwebs"),_("webs"), _("thick webs")}, '}', 2,
-            {c_white, c_white, c_white}, {true, true, false},{false, false, false}, 0,
-            {0,0,0}
-        },
-
-        {
-            "fd_slime",
-            {_("slime trail"), _("slime stain"), _("puddle of slime")}, '%', 0,
-            {c_ltgreen, c_ltgreen, c_green},{true, true, true},{false, false, false}, 14400,
-            {0,0,0}
-        },
-
-        {
-            "fd_acid",
-            {_("acid splatter"), _("acid streak"), _("pool of acid")}, '5', 2,
-            {c_ltgreen, c_green, c_green}, {true, true, true}, {true, true, true}, 10,
-            {0,0,0}
-        },
-
-        {
-            "fd_sap",
-            {_("sap splatter"), _("glob of sap"), _("pool of sap")}, '5', 2,
-            {c_yellow, c_brown, c_brown}, {true, true, true}, {true, true, true}, 20,
-            {0,0,0}
-        },
-
-        {
-            "fd_sludge",
-            {_("thin sludge trail"), _("sludge trail"), _("thick sludge trail")}, '5', 2,
-            {c_ltgray, c_dkgray, c_black}, {true, true, true}, {false, false, false}, 3600,
-            {0,0,0}
-        },
-
-        {
-            "fd_fire",
-            {_("small fire"), _("fire"), _("raging fire")}, '4', 4,
-            {c_yellow, c_ltred, c_red}, {true, true, true}, {true, true, true}, 800,
-            {0,0,0}
-        },
-
-       {
-           "fd_rubble",
-           {_("legacy rubble"), _("legacy rubble"), _("legacy rubble")}, '#', 0,
-           {c_dkgray, c_dkgray, c_dkgray}, {true, true, true},{false, false, false},  1,
-           {0,0,0}
-       },
-
-        {
-            "fd_smoke",
-            {_("thin smoke"), _("smoke"), _("thick smoke")}, '8', 8,
-            {c_white, c_ltgray, c_dkgray}, {true, false, false},{false, true, true},  300,
-            {0,0,0}
+            "fd_blood", '%', 0, 28800, field_t::decay_type::liquid,
+            {_("blood splatter"), _("blood stain"), _("puddle of blood")},
+            {c_red, c_red, c_red},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
         },
         {
-            "fd_toxic_gas",
-            {_("hazy cloud"),_("toxic gas"),_("thick toxic gas")}, '8', 8,
-            {c_white, c_ltgreen, c_green}, {true, false, false},{false, true, true},  900,
-            {0,0,0}
-        },
-
-        {
-            "fd_tear_gas",
-            {_("hazy cloud"),_("tear gas"),_("thick tear gas")}, '8', 8,
-            {c_white, c_yellow, c_brown}, {true, false, false},{true, true, true},   600,
-            {0,0,0}
-        },
-
-        {
-            "fd_nuke_gas",
-            {_("hazy cloud"),_("radioactive gas"), _("thick radioactive gas")}, '8', 8,
-            {c_white, c_ltgreen, c_green}, {true, true, false}, {true, true, true},  1000,
-            {0,0,0}
-        },
-
-        {
-            "fd_gas_vent",
-            {_("gas vent"), _("gas vent"), _("gas vent")}, '%', 0,
-            {c_white, c_white, c_white}, {true, true, true}, {false, false, false}, 0,
-            {0,0,0}
-        },
-
-        { // Fire Vents
-            "fd_fire_vent",
-            {"", "", ""}, '&', -1,
-            {c_white, c_white, c_white}, {true, true, true}, {false, false, false}, 0,
-            {0,0,0}
-        },
-
-        {
-            "fd_flame_burst",
-            {_("fire"), _("fire"), _("fire")}, '5', 4,
-            {c_red, c_red, c_red}, {true, true, true}, {true, true, true}, 0,
-            {0,0,0}
-        },
-
-        {
-            "fd_electricity",
-            {_("sparks"), _("electric crackle"), _("electric cloud")}, '9', 4,
-            {c_white, c_cyan, c_blue}, {true, true, true}, {true, true, true}, 2,
-            {0,0,0}
-        },
-
-        {
-            "fd_fatigue",
-            {_("odd ripple"), _("swirling air"), _("tear in reality")}, '*', 8,
-            {c_ltgray, c_dkgray, c_magenta},{true, true, false},{false, false, false},  0,
-            {0,0,0}
-        },
-
-        { //Push Items
-            "fd_push_items",
-            {"", "", ""}, '&', -1,
-            {c_white, c_white, c_white}, {true, true, true}, {false, false, false}, 0,
-            {0,0,0}
-        },
-
-        { // shock vents
-            "fd_shock_vent",
-            {"", "", ""}, '&', -1,
-            {c_white, c_white, c_white}, {true, true, true}, {false, false, false}, 0,
-            {0,0,0}
-        },
-
-        { // acid vents
-            "fd_acid_vent",
-            {"", "", ""}, '&', -1,
-            {c_white, c_white, c_white}, {true, true, true}, {false, false, false}, 0,
-            {0,0,0}
-        },
-
-        { // plasma glow (for plasma weapons)
-            "fd_plasma",
-            {_("faint plasma"), _("glowing plasma"), _("glaring plasma")}, '9', 4,
-            {c_magenta, c_pink, c_white}, {true, true, true}, {false, false, false}, 2,
-            {0,0,0}
-        },
-
-        { // laser beam (for laser weapons)
-            "fd_laser",
-            {_("faint glimmer"), _("beam of light"), _("intense beam of light")}, '#', 4,
-            {c_blue, c_ltblue, c_white}, {true, true, true}, {false, false, false}, 1,
-            {0,0,0}
+            "fd_bile", '%', 0, 14400, field_t::decay_type::liquid,
+            {_("bile splatter"), _("bile stain"), _("puddle of bile")},
+            {c_pink, c_pink, c_pink},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
         },
         {
-            "fd_spotlight",
-            { _("spotlight"), _("spotlight"), _("spotlight") }, '&', 1,
-            {c_white, c_white, c_white}, { true, true, true }, { false, false, false }, 1,
-            {0,0,0}
+            "fd_gibs_flesh", '~', 0, 28800, field_t::decay_type::liquid,
+            {_("scraps of flesh"), _("bloody meat chunks"), _("heap of gore")},
+            {c_brown, c_ltred, c_red},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
         },
         {
-            "fd_dazzling",
-            { _("dazzling"), _("dazzling"), _("dazzling") }, '#', 4,
-            {c_ltred_yellow, c_ltred_yellow, c_ltred_yellow}, { true, true, true }, { false, false, false }, 1,
-            { 0, 0, 0 }
+            "fd_gibs_veggy", '~', 0, 28800, field_t::decay_type::liquid,
+            {_("shredded leaves and twigs"), _("shattered branches and leaves"), _("broken vegetation tangle")},
+            {c_ltgreen, c_ltgreen, c_green},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
         },
         {
-            "fd_blood_veggy",
-            {_("plant sap splatter"), _("plant sap stain"), _("puddle of resin")}, '%', 0,
-            {c_ltgreen, c_ltgreen, c_ltgreen}, {true, true, true}, {false, false, false}, 28800,
-            {0,0,0}
+            "fd_web", '}', 2, 0, field_t::decay_type::none,
+            {_("cobwebs"),_("webs"), _("thick webs")},
+            {c_white, c_white, c_white},
+            {false, false, false},
+            {1.0f, 1.0f, 0.0f},
+            {0, 0, 0},
         },
         {
-            "fd_blood_insect",
-            {_("bug blood splatter"), _("bug blood stain"), _("puddle of bug blood")}, '%', 0,
-            {c_green, c_green, c_green}, {true, true, true}, {false, false, false}, 28800,
-            {0,0,0}
+            "fd_slime", '%', 0, 14400, field_t::decay_type::liquid,
+            {_("slime trail"), _("slime stain"), _("puddle of slime")},
+            {c_ltgreen, c_ltgreen, c_green},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
         },
         {
-            "fd_blood_invertebrate",
-            {_("hemolymph splatter"), _("hemolymph stain"), _("puddle of hemolymph")}, '%', 0,
-            {c_ltgray, c_ltgray, c_ltgray}, {true, true, true}, {false, false, false}, 28800,
-            {0,0,0}
+            "fd_acid", '5', 2, 10, field_t::decay_type::none,
+            {_("acid splatter"), _("acid streak"), _("pool of acid")},
+            {c_ltgreen, c_green, c_green},
+            {true, true, true},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
         },
         {
-            "fd_gibs_insect",
-            {_("shards of chitin"), _("shattered bug leg"), _("torn insect organs")}, '~', 0,
-            {c_ltgreen, c_green, c_yellow}, {true, true, true}, {false, false, false}, 28800,
-            {0,0,0}
+            "fd_sap", '5', 2, 20, field_t::decay_type::none,
+            {_("sap splatter"), _("glob of sap"), _("pool of sap")},
+            {c_yellow, c_brown, c_brown},
+            {true, true, true},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
         },
         {
-            "fd_gibs_invertebrate",
-            {_("gooey scraps"), _("icky mess"), _("heap of squishy gore")}, '~', 0,
-            {c_ltgray, c_ltgray, c_dkgray}, {true, true, true}, {false, false, false}, 28800,
-            {0,0,0}
+            "fd_sludge", '5', 2, 3600, field_t::decay_type::none,
+            {_("thin sludge trail"), _("sludge trail"), _("thick sludge trail")},
+            {c_ltgray, c_dkgray, c_black},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
         },
         {
-            "fd_cigsmoke",
-            {_("swirl of tobacco smoke"), _("tobacco smoke"), _("thick tobacco smoke")}, '%', 8,
-            {c_white, c_ltgray, c_dkgray}, {true, true, true},{false, false, false},  350,
-            {0,0,0}
+            "fd_fire", '4', 4, 800, field_t::decay_type::fire,
+            {_("small fire"), _("fire"), _("raging fire")},
+            {c_yellow, c_ltred, c_red},
+            {true, true, true},
+            {1.0f, 1.0f, 1.0f},
+            {16, 60, 160},
         },
         {
-            "fd_weedsmoke",
-            {_("swirl of pot smoke"), _("pot smoke"), _("thick pot smoke")}, '%', 8,
-            {c_white, c_ltgray, c_dkgray}, {true, true, true},{false, false, false},  325,
-            {0,0,0}
-        },
-
-        {
-            "fd_cracksmoke",
-            {_("swirl of crack smoke"), _("crack smoke"), _("thick crack smoke")}, '%', 8,
-            {c_white, c_ltgray, c_dkgray}, {true, true, true},{false, false, false},  225,
-            {0,0,0}
+            "fd_rubble", '#', 0, 1, field_t::decay_type::none,
+            {_("legacy rubble"), _("legacy rubble"), _("legacy rubble")},
+            {c_dkgray, c_dkgray, c_dkgray},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
         },
         {
-            "fd_methsmoke",
-            {_("swirl of meth smoke"), _("meth smoke"), _("thick meth smoke")}, '%', 8,
-            {c_white, c_ltgray, c_dkgray}, {true, true, true},{false, false, false},  275,
-            {0,0,0}
+            "fd_smoke", '8', 8, 300, field_t::decay_type::gas,
+            {_("thin smoke"), _("smoke"), _("thick smoke")},
+            {c_white, c_ltgray, c_dkgray},
+            {false, true, true},
+            {1.0f, 0.5f, 0.0f},
+            {0, 0, 0},
         },
         {
-            "fd_bees",
-            {_("some bees"), _("swarm of bees"), _("angry swarm of bees")}, '8', 8,
-            {c_white, c_ltgray, c_dkgray}, {true, true, true},{true, true, true},  1000,
-            {0,0,0}
+            "fd_toxic_gas", '8', 8, 900, field_t::decay_type::gas,
+            {_("hazy cloud"),_("toxic gas"),_("thick toxic gas")},
+            {c_white, c_ltgreen, c_green},
+            {false, true, true},
+            {1.0f, 0.5f, 0.0f},
+            {0, 0, 0},
         },
-
         {
-            "fd_incendiary",
-            {_("smoke"),_("airborne incendiary"), _("airborne incendiary")}, '8', 8,
-            {c_white, c_ltred, c_ltred_red}, {true, true, false}, {true, true, true},  500,
-            {0,0,0}
+            "fd_tear_gas", '8', 8, 600, field_t::decay_type::gas,
+            {_("hazy cloud"),_("tear gas"),_("thick tear gas")},
+            {c_white, c_yellow, c_brown},
+            {true, true, true},
+            {1.0f, 0.5f, 0.0f},
+            {0, 0, 0},
         },
-
         {
-            "fd_relax_gas",
-            {_("hazy cloud"),_("sedative gas"),_("relaxation gas")}, '.', 8,
-            { c_white, c_pink, c_cyan }, { true, true, true }, { false, true, true }, 500,
-            {0,0,0}
+            "fd_nuke_gas", '8', 8, 1000, field_t::decay_type::gas,
+            {_("hazy cloud"),_("radioactive gas"), _("thick radioactive gas")},
+            {c_white, c_ltgreen, c_green},
+            {true, true, true},
+            {0.5f, 0.5f, 0.0f},
+            {0, 0, 0},
         },
-
         {
-            "fd_fungal_haze",
-            {_("hazy cloud"),_("fungal haze"),_("thick fungal haze")}, '.', 8,
-            { c_white, c_cyan, c_cyan }, { true, true, false }, { true, true, true }, 40,
-            {0,0,0}
+            "fd_gas_vent", '%', 0, 0, field_t::decay_type::none,
+            {_("gas vent"), _("gas vent"), _("gas vent")},
+            {c_white, c_white, c_white},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
         },
-
         {
-            "fd_hot_air1",
-            {"", "", ""}, '&', -1,
-            {c_white, c_yellow, c_red}, {true, true, true}, {false, false, false}, 500,
-            {0,0,0}
+            "fd_fire_vent", '&', -1, 0, field_t::decay_type::none,
+            {"", "", ""},
+            {c_white, c_white, c_white},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {8, 8, 8},
         },
-
         {
-            "fd_hot_air2",
-            {"", "", ""}, '&', -1,
-            {c_white, c_yellow, c_red}, {true, true, true}, {false, false, false}, 500,
-            {0,0,0}
+            "fd_flame_burst", '5', 4, 0, field_t::decay_type::none,
+            {_("fire"), _("fire"), _("fire")},
+            {c_red, c_red, c_red},
+            {true, true, true},
+            {1.0f, 1.0f, 1.0f},
+            {8, 8, 8},
         },
-
         {
-            "fd_hot_air3",
-            {"", "", ""}, '&', -1,
-            {c_white, c_yellow, c_red}, {true, true, true}, {false, false, false}, 500,
-            {0,0,0}
+            "fd_electricity", '9', 4, 2, field_t::decay_type::none,
+            {_("sparks"), _("electric crackle"), _("electric cloud")},
+            {c_white, c_cyan, c_blue},
+            {true, true, true},
+            {1.0f, 1.0f, 1.0f},
+            {1, 1, 8},
         },
-
         {
-            "fd_hot_air4",
-            {"", "", ""}, '&', -1,
-            {c_white, c_yellow, c_red}, {true, true, true}, {false, false, false}, 500,
-            {0,0,0}
-        }
-
+            "fd_fatigue", '*', 8, 0, field_t::decay_type::none,
+            {_("odd ripple"), _("swirling air"), _("tear in reality")},
+            {c_ltgray, c_dkgray, c_magenta},
+            {false, false, false},
+            {1.0f, 1.0f, 0.0f},
+            {0, 0, 0},
+        },
+        {
+            "fd_push_items", '&', -1, 0, field_t::decay_type::none,
+            {"", "", ""},
+            {c_white, c_white, c_white},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
+        },
+        {
+            "fd_shock_vent", '&', -1, 0, field_t::decay_type::none,
+            {"", "", ""},
+            {c_white, c_white, c_white},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
+        },
+        {
+            "fd_acid_vent", '&', -1, 0, field_t::decay_type::none,
+            {"", "", ""},
+            {c_white, c_white, c_white},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
+        },
+        {
+            "fd_plasma", '9', 4, 2, field_t::decay_type::none,
+            {_("faint plasma"), _("glowing plasma"), _("glaring plasma")},
+            {c_magenta, c_pink, c_white},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {1, 1, 8},
+        },
+        {
+            "fd_laser", '#', 4, 1, field_t::decay_type::none,
+            {_("faint glimmer"), _("beam of light"), _("intense beam of light")},
+            {c_blue, c_ltblue, c_white},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {1, 1, 1},
+        },
+        {
+            "fd_spotlight", '&', 1, 1, field_t::decay_type::none,
+            { _("spotlight"), _("spotlight"), _("spotlight") },
+            {c_white, c_white, c_white},
+            { false, false, false },
+            {1.0f, 1.0f, 1.0f},
+            {20, 20, 20},
+        },
+        {
+            "fd_dazzling", '#', 4, 1, field_t::decay_type::none,
+            { _("dazzling"), _("dazzling"), _("dazzling") },
+            {c_ltred_yellow, c_ltred_yellow, c_ltred_yellow},
+            { false, false, false },
+            {1.0f, 1.0f, 1.0f},
+            {2, 2, 2},
+        },
+        {
+            "fd_blood_veggy", '%', 0, 28800, field_t::decay_type::liquid,
+            {_("plant sap splatter"), _("plant sap stain"), _("puddle of resin")},
+            {c_ltgreen, c_ltgreen, c_ltgreen},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
+        },
+        {
+            "fd_blood_insect", '%', 0, 28800, field_t::decay_type::liquid,
+            {_("bug blood splatter"), _("bug blood stain"), _("puddle of bug blood")},
+            {c_green, c_green, c_green},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
+        },
+        {
+            "fd_blood_invertebrate", '%', 0, 28800, field_t::decay_type::liquid,
+            {_("hemolymph splatter"), _("hemolymph stain"), _("puddle of hemolymph")},
+            {c_ltgray, c_ltgray, c_ltgray},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
+        },
+        {
+            "fd_gibs_insect", '~', 0, 28800, field_t::decay_type::liquid,
+            {_("shards of chitin"), _("shattered bug leg"), _("torn insect organs")},
+            {c_ltgreen, c_green, c_yellow},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
+        },
+        {
+            "fd_gibs_invertebrate", '~', 0, 28800, field_t::decay_type::liquid,
+            {_("gooey scraps"), _("icky mess"), _("heap of squishy gore")},
+            {c_ltgray, c_ltgray, c_dkgray},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
+        },
+        {
+            "fd_cigsmoke", '%', 8, 350, field_t::decay_type::gas,
+            {_("swirl of tobacco smoke"), _("tobacco smoke"), _("thick tobacco smoke")},
+            {c_white, c_ltgray, c_dkgray},
+            {false, false, false},
+            {0.7f, 0.7f, 0.7f},
+            {0, 0, 0},
+        },
+        {
+            "fd_weedsmoke", '%', 8, 325, field_t::decay_type::gas,
+            {_("swirl of pot smoke"), _("pot smoke"), _("thick pot smoke")},
+            {c_white, c_ltgray, c_dkgray},
+            {false, false, false},
+            {0.7f, 0.7f, 0.7f},
+            {0, 0, 0},
+        },
+        {
+            "fd_cracksmoke", '%', 8, 225, field_t::decay_type::gas,
+            {_("swirl of crack smoke"), _("crack smoke"), _("thick crack smoke")},
+            {c_white, c_ltgray, c_dkgray},
+            {false, false, false},
+            {0.7f, 0.7f, 0.7f},
+            {0, 0, 0},
+        },
+        {
+            "fd_methsmoke", '%', 8, 275, field_t::decay_type::gas,
+            {_("swirl of meth smoke"), _("meth smoke"), _("thick meth smoke")},
+            {c_white, c_ltgray, c_dkgray},
+            {false, false, false},
+            {0.7f, 0.7f, 0.7f},
+            {0, 0, 0},
+        },
+        {
+            "fd_bees", '8', 8, 1000, field_t::decay_type::none,
+            {_("some bees"), _("swarm of bees"), _("angry swarm of bees")},
+            {c_white, c_ltgray, c_dkgray},
+            {true, true, true},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
+        },
+        {
+            "fd_incendiary", '8', 8, 500, field_t::decay_type::none,
+            {_("smoke"),_("airborne incendiary"), _("airborne incendiary")},
+            {c_white, c_ltred, c_ltred_red},
+            {true, true, true},
+            {1.0f, 0.5f, 0.0f},
+            {8, 16, 30},
+        },
+        {
+            "fd_relax_gas", '.', 8, 500, field_t::decay_type::gas,
+            {_("hazy cloud"),_("sedative gas"),_("relaxation gas")},
+            { c_white, c_pink, c_cyan },
+            { false, true, true },
+            {0.7f, 0.7f, 0.7f},
+            {0, 0, 0},
+        },
+        {
+            "fd_fungal_haze", '.', 8, 40, field_t::decay_type::gas,
+            {_("hazy cloud"),_("fungal haze"),_("thick fungal haze")},
+            { c_white, c_cyan, c_cyan },
+            { true, true, true },
+            {1.0f, 0.5f, 0.0f},
+            {0, 0, 0},
+        },
+        {
+            "fd_hot_air1", '&', -1, 500, field_t::decay_type::gas,
+            {"", "", ""},
+            {c_white, c_yellow, c_red},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
+        },
+        {
+            "fd_hot_air2", '&', -1, 500, field_t::decay_type::gas,
+            {"", "", ""},
+            {c_white, c_yellow, c_red},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
+        },
+        {
+            "fd_hot_air3", '&', -1, 500, field_t::decay_type::gas,
+            {"", "", ""},
+            {c_white, c_yellow, c_red},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
+        },
+        {
+            "fd_hot_air4", '&', -1, 500, field_t::decay_type::gas,
+            {"", "", ""},
+            {c_white, c_yellow, c_red},
+            {false, false, false},
+            {1.0f, 1.0f, 1.0f},
+            {0, 0, 0},
+        },
     };
 
     for(int i = 0; i < num_fields; i++) {
@@ -383,7 +445,7 @@ void map::spread_gas( field_entry *cur, int x, int y, field_id curtype,
     int current_age = cur->getFieldAge();
     if (current_density > 1 && current_age > 0 && !spread.empty()) {
         point p = spread[ rng( 0, spread.size() - 1 ) ];
-        field_entry *candidate_field = get_field(p.x, p.y).findField( curtype );
+        field_entry *candidate_field = get_field(p.x, p.y).find( curtype );
         int candidate_density = candidate_field ? candidate_field->getFieldDensity() : 0;
         // Nearby gas grows thicker, and ages are shared.
         int age_fraction = 0.5 + current_age / current_density;
@@ -394,7 +456,7 @@ void map::spread_gas( field_entry *cur, int x, int y, field_id curtype,
             cur->setFieldAge(current_age - age_fraction);
         // Or, just create a new field.
         } else if ( add_field( p.x, p.y, curtype, 1 ) ) {
-            get_field(p.x, p.y).findField( curtype )->setFieldAge(age_fraction);
+            get_field(p.x, p.y).find( curtype )->setFieldAge(age_fraction);
             cur->setFieldDensity( current_density - 1 );
             cur->setFieldAge(current_age - age_fraction);
         }
@@ -452,7 +514,7 @@ bool map::process_fields_in_submap( submap *const current_submap,
 {
     // Realistically this is always true, this function only gets called if fields exist.
     bool found_field = false;
-    //Holds m.field_at(x,y).findField(fd_some_field) type returns.
+    //Holds m.field_at(x,y).find(fd_some_field) type returns.
     // Just to avoid typing that long string for a temp value.
     field_entry *tmpfld = NULL;
     field_id curtype; //Holds cur->getFieldType() as thats what the old system used before rewrite.
@@ -471,7 +533,7 @@ bool map::process_fields_in_submap( submap *const current_submap,
             field &curfield = current_submap->fld[locx][locy];
             for( auto it = curfield.begin(); it != curfield.end();) {
                 //Iterating through all field effects in the submap's field.
-                field_entry * cur = &it->second;
+                field_entry *cur = &*it;
 
                 curtype = cur->getFieldType();
                 // Setting our return value. fd_null really doesn't exist anymore,
@@ -845,7 +907,7 @@ bool map::process_fields_in_submap( submap *const current_submap,
                                     for (int j = 0; j < 3 && cur->getFieldAge() < 0; j++) {
                                         int fx = x + ((i + starti) % 3) - 1;
                                         int fy = y + ((j + startj) % 3) - 1;
-                                        tmpfld = get_field(fx, fy).findField(fd_fire);
+                                        tmpfld = get_field(fx, fy).find(fd_fire);
                                         if (tmpfld && tmpfld != cur && cur->getFieldAge() < 0 &&
                                             tmpfld->getFieldDensity() < 3 &&
                                             (in_pit == (ter(fx, fy) == t_pit))) {
@@ -913,7 +975,7 @@ bool map::process_fields_in_submap( submap *const current_submap,
                                 int fx = x + ((i + starti) % 3) - 1, fy = y + ((j + startj) % 3) - 1;
                                 if (INBOUNDS(fx, fy)) {
                                     field &nearby_field = get_field(fx, fy);
-                                    field_entry *nearwebfld = nearby_field.findField(fd_web);
+                                    field_entry *nearwebfld = nearby_field.find(fd_web);
                                     int spread_chance = 25 * (cur->getFieldDensity() - 1);
                                     if (nearwebfld) {
                                         spread_chance = 50 + spread_chance / 2;
@@ -927,17 +989,17 @@ bool map::process_fields_in_submap( submap *const current_submap,
                                           (cur->getFieldDensity() == 3  && (has_flag("FLAMMABLE_HARD", fx, fy) && one_in(10))) ||
                                           flammable_items_at(fx, fy) || nearwebfld )) {
                                         add_field(fx, fy, fd_fire, 1); //Nearby open flammable ground? Set it on fire.
-                                        tmpfld = nearby_field.findField(fd_fire);
+                                        tmpfld = nearby_field.find(fd_fire);
                                         if(tmpfld) {
                                             tmpfld->setFieldAge(100);
                                             cur->setFieldAge(cur->getFieldAge() + 50);
                                         }
                                         if(nearwebfld) {
                                             if (fx == x && fy == y){
-                                                it = nearby_field.removeField(fd_web);
+                                                it = nearby_field.remove(fd_web);
                                                 skipIterIncr = true;
                                             } else {
-                                                nearby_field.removeField(fd_web);
+                                                nearby_field.remove(fd_web);
                                             }
                                         }
                                     } else {
@@ -1082,7 +1144,7 @@ bool map::process_fields_in_submap( submap *const current_submap,
                         for (int i = x - 1; i <= x + 1; i++) {
                             for (int j = y - 1; j <= y + 1; j++) {
                                 field &wandering_field = get_field(i, j);
-                                tmpfld = wandering_field.findField(fd_toxic_gas);
+                                tmpfld = wandering_field.find(fd_toxic_gas);
                                 if (tmpfld && tmpfld->getFieldDensity() < 3) {
                                     tmpfld->setFieldDensity(tmpfld->getFieldDensity() + 1);
                                 } else {
@@ -1098,7 +1160,7 @@ bool map::process_fields_in_submap( submap *const current_submap,
                                 cur->setFieldDensity(cur->getFieldDensity() - 1);
                             }
                         } else {
-                            it = curfield.replaceField(fd_fire_vent, fd_flame_burst);
+                            it = curfield.replace(fd_fire_vent, fd_flame_burst);
                             cur->setFieldDensity(3);
                             continue;
                         }
@@ -1109,7 +1171,7 @@ bool map::process_fields_in_submap( submap *const current_submap,
                         if (cur->getFieldDensity() > 1) {
                             cur->setFieldDensity(cur->getFieldDensity() - 1);
                         } else {
-                            it = curfield.replaceField(fd_flame_burst, fd_fire_vent);
+                            it = curfield.replace(fd_flame_burst, fd_fire_vent);
                             cur->setFieldDensity(3);
                             continue;
                         }
@@ -1144,7 +1206,7 @@ bool map::process_fields_in_submap( submap *const current_submap,
                                 }
                                 if (valid.empty()) {    // Spread to adjacent space, then
                                     int px = x + rng(-1, 1), py = y + rng(-1, 1);
-                                    field_entry *elec = get_field( px, py ).findField( fd_electricity );
+                                    field_entry *elec = get_field( px, py ).find( fd_electricity );
                                     if (move_cost(px, py) > 0 && elec != nullptr &&
                                         elec->getFieldDensity() < 3) {
                                         elec->setFieldDensity( elec->getFieldDensity() + 1 );
@@ -1301,24 +1363,24 @@ bool map::process_fields_in_submap( submap *const current_submap,
                     case fd_bees:
                         // Poor bees are vulnerable to so many other fields.
                         // TODO: maybe adjust effects based on different fields.
-                        if( curfield.findField( fd_web ) ||
-                            curfield.findField( fd_fire ) ||
-                            curfield.findField( fd_smoke ) ||
-                            curfield.findField( fd_toxic_gas ) ||
-                            curfield.findField( fd_tear_gas ) ||
-                            curfield.findField( fd_relax_gas ) ||
-                            curfield.findField( fd_nuke_gas ) ||
-                            curfield.findField( fd_gas_vent ) ||
-                            curfield.findField( fd_fire_vent ) ||
-                            curfield.findField( fd_flame_burst ) ||
-                            curfield.findField( fd_electricity ) ||
-                            curfield.findField( fd_fatigue ) ||
-                            curfield.findField( fd_shock_vent ) ||
-                            curfield.findField( fd_plasma ) ||
-                            curfield.findField( fd_laser ) ||
-                            curfield.findField( fd_dazzling) ||
-                            curfield.findField( fd_electricity ) ||
-                            curfield.findField( fd_incendiary ) ) {
+                        if( curfield.find( fd_web ) ||
+                            curfield.find( fd_fire ) ||
+                            curfield.find( fd_smoke ) ||
+                            curfield.find( fd_toxic_gas ) ||
+                            curfield.find( fd_tear_gas ) ||
+                            curfield.find( fd_relax_gas ) ||
+                            curfield.find( fd_nuke_gas ) ||
+                            curfield.find( fd_gas_vent ) ||
+                            curfield.find( fd_fire_vent ) ||
+                            curfield.find( fd_flame_burst ) ||
+                            curfield.find( fd_electricity ) ||
+                            curfield.find( fd_fatigue ) ||
+                            curfield.find( fd_shock_vent ) ||
+                            curfield.find( fd_plasma ) ||
+                            curfield.find( fd_laser ) ||
+                            curfield.find( fd_dazzling) ||
+                            curfield.find( fd_electricity ) ||
+                            curfield.find( fd_incendiary ) ) {
                             // Kill them at the end of processing.
                             cur->setFieldDensity( 0 );
                         } else {
@@ -1337,7 +1399,7 @@ bool map::process_fields_in_submap( submap *const current_submap,
                                     // TODO: Figure out a way to merge bee fields without allowing
                                     // Them to effectively move several times in a turn depending
                                     // on iteration direction.
-                                    if( !target_field.findField( fd_bees ) ) {
+                                    if( !target_field.find( fd_bees ) ) {
                                         add_field( candidate_position, fd_bees,
                                                    cur->getFieldDensity(), cur->getFieldAge() );
                                         cur->setFieldDensity( 0 );
@@ -1405,7 +1467,7 @@ bool map::process_fields_in_submap( submap *const current_submap,
                     }
                     if (should_dissipate == true || !cur->isAlive()) { // Totally dissapated.
                         current_submap->field_count--;
-                        it = current_submap->fld[locx][locy].removeField(cur->getFieldType());
+                        it = current_submap->fld[locx][locy].remove(cur->getFieldType());
                         continue;
                     }
                 }
@@ -1444,10 +1506,10 @@ void map::player_in_field( player &u )
     }
 
     // Iterate through all field effects on this tile.
-    // When removing a field, do field_list_it = curfield.removeField(type) and continue
+    // When removing a field, do field_list_it = curfield.remove(type) and continue
     // This ensures proper iteration through the fields.
     for( auto field_list_it = curfield.begin(); field_list_it != curfield.end(); ){
-        field_entry * cur = &field_list_it->second;
+        field_entry *cur = &*field_list_it;
 
         //Do things based on what field effect we are currently in.
         switch (cur->getFieldType()) {
@@ -1468,12 +1530,12 @@ void map::player_in_field( player &u )
             if (!u.has_trait("WEB_WALKER") && !u.in_vehicle) {
                 //between 5 and 15 minus your current web level.
                 u.add_effect("webbed", 1, num_bp, true, cur->getFieldDensity());
-                field_list_it = curfield.removeField( fd_web ); //Its spent.
+                field_list_it = curfield.remove( fd_web ); //Its spent.
                 continue;
                 //If you are in a vehicle destroy the web.
                 //It should of been destroyed when you ran over it anyway.
             } else if (u.in_vehicle) {
-                field_list_it = curfield.removeField( fd_web );
+                field_list_it = curfield.remove( fd_web );
                 continue;
             }
         } break;
@@ -1515,7 +1577,7 @@ void map::player_in_field( player &u )
             u.add_msg_player_or_npc(m_bad, _("The sap sticks to you!"), _("The sap sticks to <npcname>!"));
             u.add_effect("sap", cur->getFieldDensity() * 2);
             if (cur->getFieldDensity() == 1) {
-                field_list_it = curfield.removeField( fd_sap );
+                field_list_it = curfield.remove( fd_sap );
                 continue;
             } else {
                 cur->setFieldDensity(cur->getFieldDensity() - 1); //Use up sap.
@@ -1525,7 +1587,7 @@ void map::player_in_field( player &u )
         case fd_sludge:
             u.add_msg_if_player(m_bad, _("The sludge is thick and sticky. You struggle to pull free."));
             u.moves -= cur->getFieldDensity() * 300;
-            field_list_it = curfield.removeField( fd_sludge );
+            field_list_it = curfield.remove( fd_sludge );
             break;
 
         case fd_fire:
@@ -1732,12 +1794,12 @@ void map::player_in_field( player &u )
             //Why do these get removed???
         case fd_shock_vent:
             //Stepping on a shock vent shuts it down.
-            field_list_it = curfield.removeField( fd_shock_vent );
+            field_list_it = curfield.remove( fd_shock_vent );
             continue;
 
         case fd_acid_vent:
             //Stepping on an acid vent shuts it down.
-            field_list_it = curfield.removeField( fd_acid_vent );
+            field_list_it = curfield.remove( fd_acid_vent );
             continue;
 
         case fd_bees:
@@ -1834,7 +1896,7 @@ void map::monster_in_field( monster &z )
 
     int dam = 0;
     for( auto field_list_it = curfield.begin(); field_list_it != curfield.end(); ) {
-        field_entry * cur = &field_list_it->second;
+        field_entry *cur = &*field_list_it;
 
         switch (cur->getFieldType()) {
         case fd_null:
@@ -1845,7 +1907,7 @@ void map::monster_in_field( monster &z )
         case fd_web:
             if (!z.has_flag(MF_WEBWALK)) {
                 z.add_effect("webbed", 1, num_bp, true, cur->getFieldDensity());
-                field_list_it = curfield.removeField( fd_web );
+                field_list_it = curfield.remove( fd_web );
                 continue;
             }
             break;
@@ -1866,7 +1928,7 @@ void map::monster_in_field( monster &z )
         case fd_sap:
             z.moves -= cur->getFieldDensity() * 5;
             if (cur->getFieldDensity() == 1) {
-                field_list_it = curfield.removeField( fd_sap );
+                field_list_it = curfield.remove( fd_sap );
                 continue;
             } else {
                 cur->setFieldDensity(cur->getFieldDensity() - 1);
@@ -1877,7 +1939,7 @@ void map::monster_in_field( monster &z )
             if (!z.has_flag(MF_DIGS) && !z.has_flag(MF_FLIES) &&
                 !z.has_flag(MF_SLUDGEPROOF)) {
               z.moves -= cur->getFieldDensity() * 300;
-              field_list_it = curfield.removeField( fd_sludge );
+              field_list_it = curfield.remove( fd_sludge );
             }
             break;
 
@@ -2105,19 +2167,19 @@ void map::monster_in_field( monster &z )
     }
 }
 
-int field_entry::move_cost() const{
-  return fieldlist[type].move_cost[ getFieldDensity() - 1 ];
+int field_entry::move_cost() const {
+    return 0;
 }
 
-field_id field_entry::getFieldType() const{
+field_id field_entry::getFieldType() const {
     return type;
 }
 
-int field_entry::getFieldDensity() const{
+int field_entry::getFieldDensity() const {
     return density;
 }
 
-int field_entry::getFieldAge() const{
+int field_entry::getFieldAge() const {
     return age;
 }
 
@@ -2156,20 +2218,32 @@ int field_entry::setFieldAge(const int new_age){
     return age;
 }
 
+field::iterator field::find_(field_id const id)
+{
+    return std::find_if(begin(), end(), [&](const_reference fld) {
+        return fld.getFieldType() == id;
+    });
+}
+
+field::const_iterator field::find_(field_id const id) const
+{
+    return const_cast<field*>(this)->find_(id);
+}
+
 field_entry* field::find(field_id const id)
 {
-    const auto it = field_list.find(id);
-    return it != field_list.end() ? &it->second : nullptr;
+    auto const it = find_(id);
+    return it != end() ? &*it : nullptr;
 }
 
 field_entry const* field::find(field_id const id) const
 {
-    return static_cast<field*>(this)->find(id);
+    return const_cast<field*>(this)->find(id);
 }
 
 bool field::add(const field_id id, const int new_density, const int new_age)
 {
-    if (fieldlist[id].priority >= fieldlist[draw_symbol].priority) {
+    if (get_field_def(id).priority >= get_field_def(draw_symbol).priority) {
         draw_symbol = id;
     }
 
@@ -2179,84 +2253,129 @@ bool field::add(const field_id id, const int new_density, const int new_age)
         return false;
     }
 
-    field_list[id] = field_entry(id, new_density, new_age);
+    field_list.emplace_back(id, new_density, new_age);
     return true;
 }
 
-std::map<field_id, field_entry>::iterator field::remove(const field_id id)
+field::iterator field::remove(field_id const id)
 {
-    auto it = field_list.find(id);
-    if(it != field_list.end()) {
-        field_list.erase(it++);
-        if (field_list.empty()) {
-            draw_symbol = fd_null;
-        } else {
-            draw_symbol = fd_null;
-            for( auto &fld : field_list ) {
-                if (fieldlist[fld.first].priority >= fieldlist[draw_symbol].priority) {
-                    draw_symbol = fld.first;
-                }
-            }
+    auto it = find_(id);
+    if (it == end()) {
+        return it;
+    }
+
+    field_list.erase(it++);
+
+    draw_symbol = fd_null;
+    for (auto const &fld : field_list) {
+        if (get_field_def(fld.getFieldType()).priority >= get_field_def(draw_symbol).priority) {
+            draw_symbol = fld.getFieldType();
         }
-    };
+    }
+
     return it;
 }
 
-size_t field::fieldCount() const
-{
-    return field_list.size();
-}
-
-std::map<field_id, field_entry>::iterator field::begin()
-{
-    return field_list.begin();
-}
-
-std::map<field_id, field_entry>::const_iterator field::begin() const
-{
-    return field_list.begin();
-}
-
-std::map<field_id, field_entry>::iterator field::end()
-{
-    return field_list.end();
-}
-
-std::map<field_id, field_entry>::const_iterator field::end() const
-{
-    return field_list.end();
-}
-
-/*
-Function: fieldSymbol
-Returns the last added field from the tile for drawing purposes.
-*/
-field_id field::fieldSymbol() const
+field_id field::symbol() const
 {
     return draw_symbol;
 }
 
-std::map<field_id, field_entry >::iterator field::replaceField( field_id old_field,
-        field_id new_field )
+field::iterator field::replace(field_id const old_field, field_id const new_field)
 {
-    auto it = field_list.find( old_field );
-    if( it != field_list.end() ) {
-        field_entry tmp = it->second;
-        tmp.setFieldType( new_field );
-        field_list.erase( it++ );
-        field_list[new_field] = tmp;
-        if( draw_symbol == old_field ) {
-            draw_symbol = new_field;
-        }
+    auto it = find_(old_field);
+    if (it == end()) {
+        return it;
     }
+
+    it->setFieldType(new_field);
+    if (draw_symbol == old_field) {
+        draw_symbol = new_field;
+    }
+
     return it;
 }
 
-int field::move_cost() const
+bool field::is_dangerous() const
 {
-    int current_cost = 0;
-    for( auto & fld : field_list ) {
-        current_cost += fld.second.move_cost();
+    return std::any_of(begin(), end(), [](const_reference ref) {
+        return ref.is_dangerous();
+    });
+}
+
+bool field::is_dangerous(Creature const &subject) const
+{
+    return std::any_of(begin(), end(), [&](const_reference ref) {
+        return ref.is_dangerous(subject);
+    });
+}
+
+float field::transparency() const
+{
+    float value = 1.0f;
+    for (auto const &fld : field_list) {
+        if (value == 0.0f) {
+            return 0.0f;
+        }
+
+        field_t const &f = get_field_def(fld.getFieldType());
+        value *= f.transparency[fld.getFieldDensity() - 1];
     }
-    return current_cost;
+
+    return value;
+}
+
+void field::decay(int const amount)
+{
+    for (auto &fld : field_list) {
+        auto const decay = static_cast<int>(fld.definition().decay);
+        if (decay <= 0) {
+            continue;
+        }
+
+        fld.setFieldAge(fld.getFieldAge() + amount / decay);
+    }
+}
+
+void field::write(JsonOut &jout)
+{
+    jout.start_array();
+    for (auto const &fld : field_list) {
+        // We don't seem to have a string identifier for fields anywhere.
+        jout.write(fld.getFieldType());
+        jout.write(fld.getFieldDensity());
+        jout.write(fld.getFieldAge());
+    }
+    jout.end_array();
+}
+
+float field::luminance() const
+{
+    float max = 0.0f;
+    for (auto const &fld : field_list) {
+        field_t const& f = get_field_def(fld.getFieldType());
+        max = std::max(max, f.luminance[fld.getFieldDensity() - 1]);
+    }
+
+    return max;
+}
+
+bool field_entry::is_dangerous(Creature const &subject) const
+{
+    switch (getFieldType()) {
+    case fd_smoke:
+        return subject.get_env_resist(bp_mouth) < 7;
+    case fd_tear_gas:
+    case fd_toxic_gas:
+    case fd_gas_vent:
+    case fd_relax_gas:
+        return subject.get_env_resist(bp_mouth) < 15;
+    case fd_fungal_haze:
+        return !subject.has_trait("M_IMMUNE") && (
+                    subject.get_env_resist(bp_mouth) < 15 ||
+                    subject.get_env_resist(bp_eyes)  < 15
+                );
+    default:
+        return is_dangerous();
+    }
 }

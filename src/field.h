@@ -5,35 +5,61 @@
 #include <string>
 #include <map>
 
+class Creature;
+class JsonOut;
+
 /*
 struct field_t
 Used to store the master field effects list metadata. Not used to store a field, just queried to find out specifics
 of an existing field.
 */
 struct field_t {
+    enum class decay_type : int {
+        none   = 0,
+        fire   = 1,
+        liquid = 3,
+        gas    = 5,
+    };
+
     // internal ident, used for tileset and for serializing,
     // should be the same as the entry in field_id below (e.g. "fd_fire").
     std::string id;
-    std::string name[3]; //The display name of the given density (ie: light smoke, smoke, heavy smoke)
-    char sym; //The symbol to draw for this field. Note that some are reserved like * and %. You will have to check the draw function for specifics.
-    int priority; //Inferior numbers have lower priority. 0 is "ground" (splatter), 2 is "on the ground", 4 is "above the ground" (fire), 6 is reserved for furniture, and 8 is "in the air" (smoke).
-    nc_color color[3]; //The color the field will be drawn as on the screen, by density.
+    
+    // The symbol to draw for this field.
+    // Note that some are reserved like * and %.
+    // You will have to check the draw function for specifics.
+    char sym;
 
-    /*
-    If true, does not invoke a check to block line of sight. If false, may block line of sight.
-    Note that this does nothing by itself. You must go to the code block in lightmap.cpp and modify
-    transparancy code there with a case statement as well!
-    */
-    bool transparent[3];
-
-    //Dangerous tiles ask you before you step in them.
-    bool dangerous[3];
+    // Inferior numbers have lower priority.
+    //-1 is ?
+    // 0 is "ground" (splatter),
+    // 2 is "on the ground",
+    // 4 is "above the ground" (fire),
+    // 6 is reserved for furniture,
+    // and 8 is "in the air" (smoke).
+    int priority;
 
     //Controls, albeit randomly, how long a field of a given type will last before going down in density.
     int halflife; // In turns
 
-    //cost of moving into and out of this field
-    int move_cost[3];
+    decay_type decay;
+
+    // The display name of the given density (ie: light smoke, smoke, heavy smoke)
+    std::string name[3];
+
+    nc_color color[3]; //The color the field will be drawn as on the screen, by density.
+
+    //Dangerous tiles ask you before you step in them.
+    bool dangerous[3];      
+
+    /*
+    If not 0, does not invoke a check to block line of sight. If false, may block line of sight.
+    Note that this does nothing by itself. You must go to the code block in lightmap.cpp and modify
+    transparancy code there with a case statement as well!
+    */
+    float transparency[3];
+
+    float luminance[3];
 };
 
 //The master list of id's for a field, corresponding to the fieldlist array.
@@ -135,6 +161,8 @@ public:
         return get_field_def(type).dangerous[density - 1];
     }
 
+    bool is_dangerous(Creature const &subject) const;
+
     //Returns the display name of the current field given its current density.
     //IE: light smoke, smoke, heavy smoke
     std::string const& name() const {
@@ -144,6 +172,10 @@ public:
     //Returns true if this is an active field, false if it should be removed.
     bool isAlive() const {
         return is_alive;
+    }
+
+    field_t const& definition() const {
+        return get_field_def(type);
     }
 private:
     field_id type     = fd_null; // The field identifier.
@@ -156,12 +188,18 @@ private:
  * A variable sized collection of field entries on a given map square.
  * It contains one (at most) entry of each field type (e. g. one smoke entry and one
  * fire entry, but not two fire entries).
- * Use @ref findField to get the field entry of a specific type, or iterate over
+ * Use @ref find to get the field entry of a specific type, or iterate over
  * all entries via @ref begin and @ref end (allows range based iteration).
- * There is @ref fieldSymbol to specific which field should be drawn on the map.
+ * There is @ref symbol to specific which field should be drawn on the map.
 */
 class field {
 public:
+    using container_t     = std::vector<field_entry>;
+    using iterator        = container_t::iterator;
+    using const_iterator  = container_t::const_iterator;
+    using const_reference = container_t::const_reference;
+    using reference       = container_t::reference;
+
     field() = default;
 
     /**
@@ -173,7 +211,7 @@ public:
 
     /**
      * Inserts the given field_id into the field list for a given tile if it does not already exist.
-     * If you wish to modify an already existing field use findField and modify the result.
+     * If you wish to modify an already existing field use find and modify the result.
      * Density defaults to 1, and age to 0 (permanent) if not specified.
      * The density is added to an existing field entry, but the age is only used for newly added entries.
      * @return false if the field_id already exists, true otherwise.
@@ -181,7 +219,7 @@ public:
      * Inserts the given field_id into the field list for a given tile if it does not already exist.
      * Returns false if the field_id already exists, true otherwise.
      * If the field already exists, it will return false BUT it will add the density/age to the current values for upkeep.
-     * If you wish to modify an already existing field use findField and modify the result.
+     * If you wish to modify an already existing field use find and modify the result.
      * Density defaults to 1, and age to 0 (permanent) if not specified.
     */
     bool add(field_id id, int new_density = 1, int new_age = 0);
@@ -191,33 +229,53 @@ public:
      * @return The iterator to the field after the removed on.
      * The result might be the @ref end iterator.
      */
-    std::map<field_id, field_entry>::iterator remove(field_id id);
+    iterator remove(field_id id);
+
+    bool empty() const { return field_list.empty(); }
 
     //Returns the number of fields existing on the current tile.
-    size_t fieldCount() const;
+    size_t size() const { return field_list.size(); }
+
+    iterator       begin()       { return field_list.begin(); }
+    const_iterator begin() const { return field_list.begin(); }
+
+    iterator       end()       { return field_list.end(); }
+    const_iterator end() const { return field_list.begin(); }
+
+    void clear() { field_list.clear(); }
 
     /**
      * Returns the id of the field that should be drawn.
      */
-    field_id fieldSymbol() const;
+    field_id symbol() const;
 
-    std::map<field_id, field_entry>::iterator replaceField(field_id old_field, field_id new_field);
-
-    //Returns the vector iterator to begin searching through the list.
-    std::map<field_id, field_entry>::iterator begin();
-    std::map<field_id, field_entry>::const_iterator begin() const;
-
-    //Returns the vector iterator to end searching through the list.
-    std::map<field_id, field_entry>::iterator end();
-    std::map<field_id, field_entry>::const_iterator end() const;
+    iterator replace(field_id old_field, field_id new_field);
 
     /**
      * Returns the total move cost from all fields.
+     * TODO: always 0 currently
      */
-    int move_cost() const;
+    int move_cost() const { return 0; }
 
+    bool is_dangerous() const;
+    bool is_dangerous(Creature const &subject) const;
+
+    float transparency() const;
+
+    void decay(int amount);
+
+    void write(JsonOut &jout);
+
+    float luminance() const;
 private:
-    std::map<field_id, field_entry> field_list; //A pointer lookup table of all field effects on the current tile.    //Draw_symbol currently is equal to the last field added to the square. You can modify this behavior in the class functions if you wish.
+    iterator       find_(field_id id);
+    const_iterator find_(field_id id) const;
+
+
+    // A pointer lookup table of all field effects on the current tile.
+    // Draw_symbol currently is equal to the last field added to the square.
+    // You can modify this behavior in the class functions if you wish.
+    container_t field_list;
     field_id draw_symbol = fd_null;
 };
 

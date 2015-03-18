@@ -12673,15 +12673,7 @@ point player::adjacent_tile()
             if( g->mon_at(i, j) == -1 && g->npc_at(i, j) == -1 && g->m.move_cost(i, j) > 0 &&
                 (curtrap == tr_null || traplist[curtrap]->is_benign()) ) {
                 // only consider tile if unoccupied, passable and has no traps
-                dangerous_fields = 0;
-                auto &tmpfld = g->m.field_at(i, j);
-                for( auto &fld : tmpfld ) {
-                    const field_entry &cur = fld.second;
-                    if( cur.is_dangerous() ) {
-                        dangerous_fields++;
-                    }
-                }
-                if (dangerous_fields == 0) {
+                if (!g->m.field_at(i, j).is_dangerous()) {
                     ret.push_back(point(i, j));
                 }
             }

@@ -45,33 +45,12 @@ struct ratio_index {
 
 bool npc::is_dangerous_field( const field_entry &fld ) const
 {
-    switch( fld.getFieldType() ) {
-        case fd_smoke:
-            return get_env_resist( bp_mouth ) < 7;
-        case fd_tear_gas:
-        case fd_toxic_gas:
-        case fd_gas_vent:
-        case fd_relax_gas:
-            return get_env_resist( bp_mouth ) < 15;
-        case fd_fungal_haze:
-            if( has_trait( "M_IMMUNE" ) ) {
-                return false;
-            }
-            return get_env_resist( bp_mouth ) < 15 || get_env_resist( bp_eyes ) < 15;
-        default:
-            return fld.is_dangerous();
-    }
+    return fld.is_dangerous(*this);
 }
 
-bool npc::sees_dangerous_field( point p ) const
+bool npc::sees_dangerous_field(point const p) const
 {
-    auto &fields = g->m.field_at( p.x, p.y );
-    for( auto & fld : fields ) {
-        if( is_dangerous_field( fld.second ) ) {
-            return true;
-        }
-    }
-    return false;
+    return g->m.field_at(p.x, p.y).is_dangerous(*this);
 }
 
 bool npc::could_move_onto( point p ) const

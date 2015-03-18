@@ -580,73 +580,75 @@ void add_corpse(int x, int y);
  const std::set<point> trap_locations(trap_id t) const;
 
 // Fields
-        /**
-         * Get the fields that are here. This is for querying and looking at it only,
-         * one can not change the fields.
-         * @param x,y The local map coordinates, if out of bounds, returns an empty field.
-         */
-        const field& field_at( const int x, const int y ) const;
-        /**
-         * Get the age of a field entry (@ref field_entry::age), if there is no
-         * field of that type, returns -1.
-         */
-        int get_field_age( const point p, const field_id t );
-        /**
-         * Get the density of a field entry (@ref field_entry::density),
-         * if there is no field of that type, returns 0.
-         */
-        int get_field_strength( const point p, const field_id t );
-        /**
-         * Increment/decrement age of field entry at point.
-         * @return resulting age or -1 if not present (does *not* create a new field).
-         */
-        int adjust_field_age( const point p, const field_id t, const int offset );
-        /**
-         * Increment/decrement density of field entry at point, creating if not present,
-         * removing if density becomes 0.
-         * @return resulting density, or 0 for not present (either removed or not created at all).
-         */
-        int adjust_field_strength( const point p, const field_id t, const int offset );
-        /**
-         * Set age of field entry at point.
-         * @return resulting age or -1 if not present (does *not* create a new field).
-         * @param isoffset If true, the given age value is added to the existing value,
-         * if false, the existing age is ignored and overridden.
-         */
-        int set_field_age( const point p, const field_id t, const int age, bool isoffset = false );
-        /**
-         * Set density of field entry at point, creating if not present,
-         * removing if density becomes 0.
-         * @return resulting density, or 0 for not present (either removed or not created at all).
-         * @param isoffset If true, the given str value is added to the existing value,
-         * if false, the existing density is ignored and overridden.
-         */
-        int set_field_strength( const point p, const field_id t, const int str, bool isoffset = false );
-        /**
-         * Get field of specific type at point.
-         * @return NULL if there is no such field entry at that place.
-         */
-        field_entry * get_field( const point p, const field_id t );
-        /**
-         * Add field entry at point, or set density if present
-         * @return false if the field could not be created (out of bounds), otherwise true.
-         */
-        bool add_field(const point p, const field_id t, const int density, const int age);
-        /**
-         * Add field entry at xy, or set density if present
-         * @return false if the field could not be created (out of bounds), otherwise true.
-         */
-        bool add_field(const int x, const int y, const field_id t, const int density);
-        /**
-         * Remove field entry at xy, ignored if the field entry is not present.
-         */
-        void remove_field( const int x, const int y, const field_id field_to_remove );
- bool process_fields(); // See fields.cpp
- bool process_fields_in_submap(submap * const current_submap, const int submap_x, const int submap_y); // See fields.cpp
-        /**
-         * Apply field effects to the creature when it's on a square with fields.
-         */
-        void creature_in_field( Creature &critter );
+    /**
+     * Get the fields that are here. This is for querying and looking at it only,
+     * one can not change the fields.
+     * @param x,y The local map coordinates, if out of bounds, returns an empty field.
+     */
+    const field& field_at(int x, int y) const;
+    const field& field_at(point p) const;
+    /**
+     * Get field of specific type at point.
+     */
+    field_entry* get_field(point p, field_id t);
+    field_entry const* get_field(point p, field_id t) const;
+    /**
+     * Get the age of a field entry (@ref field_entry::age), if there is no
+     * field of that type, returns -1.
+     */
+    int get_field_age(point p, const field_id t) const;
+    /**
+     * Get the density of a field entry (@ref field_entry::density),
+     * if there is no field of that type, returns 0.
+     */
+    int get_field_strength(point p, field_id t) const;
+    /**
+     * Increment/decrement age of field entry at point.
+     * @return resulting age or -1 if not present (does *not* create a new field).
+     */
+    int adjust_field_age(point p, field_id t, int offset);
+    /**
+     * Increment/decrement density of field entry at point, creating if not present,
+     * removing if density becomes 0.
+     * @return resulting density, or 0 for not present (either removed or not created at all).
+     */
+    int adjust_field_strength(point p, field_id t, int offset);
+    /**
+     * Set age of field entry at point.
+     * @return resulting age or -1 if not present (does *not* create a new field).
+     * @param isoffset If true, the given age value is added to the existing value,
+     * if false, the existing age is ignored and overridden.
+     */
+    int set_field_age(point p, field_id t, int age, bool isoffset = false);
+    /**
+     * Set density of field entry at point, creating if not present,
+     * removing if density becomes 0.
+     * @return resulting density, or 0 for not present (either removed or not created at all).
+     * @param isoffset If true, the given str value is added to the existing value,
+     * if false, the existing density is ignored and overridden.
+     */
+    int set_field_strength(point p, field_id t, int str, bool isoffset = false);
+
+    /**
+     * Add field entry at point, or set density if present
+     * @return false if the field could not be created (out of bounds), otherwise true.
+     */
+    bool add_field(point p, field_id t, int density, int age);
+    /**
+     * Add field entry at xy, or set density if present
+     * @return false if the field could not be created (out of bounds), otherwise true.
+     */
+    bool add_field(int x, int y, field_id t, int density);
+    /**
+     * Remove field entry at xy, ignored if the field entry is not present.
+     */
+    void remove_field(int x, int y, field_id field_to_remove);
+    bool process_fields(); // See fields.cpp
+    bool process_fields_in_submap(submap *current_submap, int submap_x, int submap_y); // See fields.cpp
+    /**
+     * Apply field effects to the creature when it's on a square with fields.
+     */
+    void creature_in_field(Creature &critter);
 
 // Computers
  computer* computer_at(const int x, const int y);
@@ -829,7 +831,9 @@ protected:
     void set_abs_sub(const int x, const int y, const int z);
 
 private:
-    field& get_field(const int x, const int y);
+    field& get_field(int x, int y);
+    field const& get_field(int x, int y) const;
+
     void spread_gas( field_entry *cur, int x, int y, field_id curtype,
                         int percent_spread, int outdoor_age_speedup );
     void create_hot_air( int x, int y, int density );

@@ -313,20 +313,14 @@ void mapbuffer::save_quad( const std::string &dirname, const std::string &filena
         jsout.start_array();
         for(int j = 0; j < SEEY; j++) {
             for(int i = 0; i < SEEX; i++) {
-                // Save fields
-                if (sm->fld[i][j].fieldCount() > 0) {
-                    jsout.write( i );
-                    jsout.write( j );
-                    jsout.start_array();
-                    for( auto &fld : sm->fld[i][j] ) {
-                        const field_entry &cur = fld.second;
-                            // We don't seem to have a string identifier for fields anywhere.
-                            jsout.write( cur.getFieldType() );
-                            jsout.write( cur.getFieldDensity() );
-                            jsout.write( cur.getFieldAge() );
-                    }
-                    jsout.end_array();
+                if (sm->fld[i][j].empty()) {
+                    continue;
                 }
+
+                // Save fields
+                jsout.write( i );
+                jsout.write( j );
+                sm->fld[i][j].write(jsout);
             }
         }
         jsout.end_array();
@@ -538,7 +532,7 @@ submap *mapbuffer::unserialize_submaps( const tripoint &p )
                         int type = jsin.get_int();
                         int density = jsin.get_int();
                         int age = jsin.get_int();
-                        if (sm->fld[i][j].findField(field_id(type)) == NULL) {
+                        if (sm->fld[i][j].find(field_id(type)) == NULL) {
                             sm->field_count++;
                         }
                         sm->fld[i][j].add(field_id(type), density, age);

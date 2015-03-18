@@ -8147,12 +8147,10 @@ void game::print_terrain_info(int lx, int ly, WINDOW *w_look, int column, int &l
 
 void game::print_fields_info(int lx, int ly, WINDOW *w_look, int column, int &line)
 {
-    const field &tmpfield = m.field_at(lx, ly);
-    for( auto &fld : tmpfield ) {
-        const field_entry *cur = &fld.second;
-        mvwprintz(w_look, line++, column, fieldlist[cur->getFieldType()].color[cur->getFieldDensity() - 1],
-                  "%s",
-                  fieldlist[cur->getFieldType()].name[cur->getFieldDensity() - 1].c_str());
+    for (auto const &fld : m.field_at(lx, ly)) {
+        int const d = fld.getFieldDensity();
+        auto const &fdef = get_field_def(fld.getFieldType());
+        mvwprintz(w_look, line++, column, fdef.color[d - 1], "%s", fdef.name[d - 1].c_str());
     }
 }
 
@@ -11687,33 +11685,8 @@ bool game::plmove(int dx, int dy)
         // move_cost() of 0 = impassible (e.g. a wall)
         u.set_underwater(false);
 
-        //Ask for EACH bad field, maybe not? Maybe say "theres X bad shit in there don't do it."
-        const field &tmpfld = m.field_at(x, y);
-        for( auto &fld : tmpfld ) {
-            const field_entry &cur = fld.second;
-            field_id curType = cur.getFieldType();
-            bool dangerous = false;
-
-            switch (curType) {
-            case fd_smoke:
-                dangerous = !(u.get_env_resist(bp_mouth) >= 7);
-                break;
-            case fd_tear_gas:
-            case fd_toxic_gas:
-            case fd_gas_vent:
-            case fd_relax_gas:
-                dangerous = !(u.get_env_resist(bp_mouth) >= 15);
-                break;
-            case fd_fungal_haze:
-                dangerous = (!((u.get_env_resist(bp_mouth) >= 15) &&
-                              (u.get_env_resist(bp_eyes) >= 15) ) &&
-                              !u.has_trait("M_IMMUNE"));
-                break;
-            default:
-                dangerous = cur.is_dangerous();
-                break;
-            }
-            if ((dangerous) && !query_yn(_("Really step into that %s?"), cur.name().c_str())) {
+        if (m.field_at(x, y).is_dangerous(u)) {
+            if (!query_yn(_("Really step into that %s?"), "TODO bad stuff")) {
                 return false;
             }
         }
