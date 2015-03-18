@@ -39,6 +39,8 @@ void map::build_transparency_cache()
     if( !transparency_cache_dirty ) {
         return;
     }
+    
+    transparency_cache_dirty = false;
 
     // Default to fully transparent.
     std::uninitialized_fill_n(
@@ -48,6 +50,7 @@ void map::build_transparency_cache()
     for( int smx = 0; smx < my_MAPSIZE; ++smx ) {
         for( int smy = 0; smy < my_MAPSIZE; ++smy ) {
             auto const cur_submap = get_submap_at_grid( smx, smy );
+            int fcount = cur_submap->field_count;
 
             for( int sx = 0; sx < SEEX; ++sx ) {
                 for( int sy = 0; sy < SEEY; ++sy ) {
@@ -58,14 +61,13 @@ void map::build_transparency_cache()
                     if( !(terlist [cur_submap->ter[sx][sy]].transparent &&
                           furnlist[cur_submap->frn[sx][sy]].transparent) ) {
                         value = LIGHT_TRANSPARENCY_SOLID;
-                    } else {
+                    } else if (fcount-- > 0 && !cur_submap->fld[sx][sy].is_transparent()) {
                         value = cur_submap->fld[sx][sy].transparency();
                     }
                 }
             }
         }
     }
-    transparency_cache_dirty = false;
 }
 
 void map::generate_lightmap()
@@ -119,6 +121,7 @@ void map::generate_lightmap()
     for (int smx = 0; smx < my_MAPSIZE; ++smx) {
         for (int smy = 0; smy < my_MAPSIZE; ++smy) {
             auto const cur_submap = get_submap_at_grid( smx, smy );
+            int fcount = cur_submap->field_count;
 
             for (int sx = 0; sx < SEEX; ++sx) {
                 for (int sy = 0; sy < SEEY; ++sy) {
@@ -156,7 +159,9 @@ void map::generate_lightmap()
                         add_light_source(x, y, 35 );
                     }
 
-                    add_light_source(x, y, cur_submap->fld[sx][sy].luminance());
+                    if (fcount-- > 0 && cur_submap->fld[sx][sy].has_luminous()) {
+                        add_light_source(x, y, cur_submap->fld[sx][sy].luminance());
+                    }
                 }
             }
         }

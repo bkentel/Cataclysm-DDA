@@ -231,10 +231,10 @@ public:
      */
     iterator remove(field_id id);
 
-    bool empty() const { return field_list.empty(); }
+    bool empty() const noexcept { return field_list.empty(); }
 
     //Returns the number of fields existing on the current tile.
-    size_t size() const { return field_list.size(); }
+    size_t size() const noexcept { return field_list.size(); }
 
     iterator       begin()       { return field_list.begin(); }
     const_iterator begin() const { return field_list.begin(); }
@@ -247,15 +247,17 @@ public:
     /**
      * Returns the id of the field that should be drawn.
      */
-    field_id symbol() const;
+    field_id symbol() const noexcept {
+        return draw_symbol;
+    }
 
-    iterator replace(field_id old_field, field_id new_field);
+    //iterator replace(field_id old_field, field_id new_field);
 
     /**
      * Returns the total move cost from all fields.
      * TODO: always 0 currently
      */
-    int move_cost() const { return 0; }
+    int move_cost() const noexcept { return 0; }
 
     bool is_dangerous() const;
     bool is_dangerous(Creature const &subject) const;
@@ -267,16 +269,35 @@ public:
     void write(JsonOut &jout);
 
     float luminance() const;
+
+    bool has_scent() const noexcept {
+        return has_scent_;
+    }
+
+    bool has_fire() const noexcept {
+        return has_fire_;
+    }
+
+    bool is_transparent() const noexcept {
+        return opaque_count_ == 0;
+    }
+
+    bool has_luminous() const noexcept {
+        return luminous_count_ > 0;
+    }
 private:
     iterator       find_(field_id id);
     const_iterator find_(field_id id) const;
-
 
     // A pointer lookup table of all field effects on the current tile.
     // Draw_symbol currently is equal to the last field added to the square.
     // You can modify this behavior in the class functions if you wish.
     container_t field_list;
     field_id draw_symbol = fd_null;
+    bool has_scent_      = false;
+    bool has_fire_       = false;
+    char opaque_count_   = 0;
+    char luminous_count_ = 0;
 };
 
 #endif

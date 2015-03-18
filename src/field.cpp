@@ -1160,8 +1160,9 @@ bool map::process_fields_in_submap( submap *const current_submap,
                                 cur->setFieldDensity(cur->getFieldDensity() - 1);
                             }
                         } else {
-                            it = curfield.replace(fd_fire_vent, fd_flame_burst);
-                            cur->setFieldDensity(3);
+                            curfield.remove(fd_fire_vent);
+                            curfield.add(fd_flame_burst, 3);
+                            ++it;
                             continue;
                         }
                         create_hot_air( x, y, cur->getFieldDensity());
@@ -1171,8 +1172,9 @@ bool map::process_fields_in_submap( submap *const current_submap,
                         if (cur->getFieldDensity() > 1) {
                             cur->setFieldDensity(cur->getFieldDensity() - 1);
                         } else {
-                            it = curfield.replace(fd_flame_burst, fd_fire_vent);
-                            cur->setFieldDensity(3);
+                            curfield.remove(fd_flame_burst);
+                            curfield.add(fd_fire_vent, 3);
+                            ++it;
                             continue;
                         }
                         create_hot_air( x, y, cur->getFieldDensity());
@@ -2254,6 +2256,22 @@ bool field::add(const field_id id, const int new_density, const int new_age)
     }
 
     field_list.emplace_back(id, new_density, new_age);
+    
+    if (id == fd_slime) {
+        has_scent_ = true;
+    } else if (id == fd_fire) {
+        has_fire_ = true;
+    }
+
+    field_t const &fld = get_field_def(id);
+    if (fld.luminance[2] || fld.luminance[1] || fld.luminance[0]) {
+        ++luminous_count_;
+    }
+
+    if (fld.transparency[2] < 1.0f || fld.transparency[1] < 1.0f && fld.transparency[0] < 1.0f) {
+        ++opaque_count_;
+    }
+   
     return true;
 }
 
@@ -2267,30 +2285,26 @@ field::iterator field::remove(field_id const id)
     field_list.erase(it++);
 
     draw_symbol = fd_null;
+    int const priority = get_field_def(draw_symbol).priority;
     for (auto const &fld : field_list) {
-        if (get_field_def(fld.getFieldType()).priority >= get_field_def(draw_symbol).priority) {
+        if (get_field_def(fld.getFieldType()).priority >= priority) {
             draw_symbol = fld.getFieldType();
         }
     }
 
-    return it;
-}
-
-field_id field::symbol() const
-{
-    return draw_symbol;
-}
-
-field::iterator field::replace(field_id const old_field, field_id const new_field)
-{
-    auto it = find_(old_field);
-    if (it == end()) {
-        return it;
+    if (id == fd_slime) {
+        has_scent_ = false;
+    } else if (id == fd_fire) {
+        has_fire_ = false;
     }
 
-    it->setFieldType(new_field);
-    if (draw_symbol == old_field) {
-        draw_symbol = new_field;
+    field_t const &fld = get_field_def(id);
+    if (fld.luminance[2] || fld.luminance[1] || fld.luminance[0]) {
+        --luminous_count_;
+    }
+
+    if (fld.transparency[2] < 1.0f || fld.transparency[1] < 1.0f && fld.transparency[0] < 1.0f) {
+        --opaque_count_;
     }
 
     return it;

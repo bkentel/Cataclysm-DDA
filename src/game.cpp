@@ -3616,8 +3616,8 @@ void game::update_scent()
                                            + sum_3_scent_y[y][x + 1])
                     ) / (1000 * 10);
 
-
-                const int fslime = m.get_field_strength(point(x, y), fd_slime) * 10;
+                field const &fld = m.field_at(x, y);
+                const int fslime = !fld.has_scent() ? 0 : fld.find(fd_slime)->getFieldDensity() * 10;
                 if (fslime > 0 && grscent[x][y] < fslime) {
                     grscent[x][y] = fslime;
                 }

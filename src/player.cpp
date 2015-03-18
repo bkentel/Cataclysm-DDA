@@ -920,7 +920,8 @@ void player::update_bodytemp()
             for (int k = -6 ; k <= 6 ; k++) {
                 int heat_intensity = 0;
 
-                int ffire = g->m.get_field_strength( point(posx() + j, posy() + k), fd_fire );
+                field const& fld = g->m.field_at(posx() + j, posy() + k);
+                int const ffire = fld.has_fire() ? fld.find(fd_fire)->getFieldDensity() : 0;
                 if(ffire > 0) {
                     heat_intensity = ffire;
                 } else if (g->m.tr_at(posx() + j, posy() + k) == tr_lava ) {
