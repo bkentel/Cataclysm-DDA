@@ -419,7 +419,7 @@ void player::process_turn()
     if (has_active_bionic("bio_metabolics") && power_level + 25 <= max_power_level &&
             hunger < 100 && (int(calendar::turn) % 5 == 0)) {
         hunger += 2;
-        power_level += 25;
+        charge_power(25);
     }
 
     suffer();
@@ -3943,9 +3943,18 @@ void player::add_bionic( bionic_id b )
 void player::remove_bionic(bionic_id b) {
     std::vector<bionic> new_my_bionics;
     for(auto &i : my_bionics) {
-        if (!(i.id == b)) {
-            new_my_bionics.push_back(bionic(i.id, i.invlet));
+        if (b == i.id) {
+            continue;
         }
+ 
+        // Ears and earplugs go together like peanut butter and jelly.
+        // Therefore, removing one, should remove the other.
+        if ((b == "bio_ears" && i.id == "bio_earplugs") ||
+            (b == "bio_earplugs" && i.id == "bio_ears")) {
+            continue;
+        }
+
+        new_my_bionics.push_back(bionic(i.id, i.invlet));
     }
     my_bionics = new_my_bionics;
     recalc_sight_limits();
@@ -3975,7 +3984,8 @@ bool player::remove_random_bionic() {
     const int numb = num_bionics();
     if (numb) {
         int rem = rng(0, num_bionics() - 1);
-        my_bionics.erase(my_bionics.begin() + rem);
+        const auto bionic = my_bionics[rem];
+        remove_bionic(bionic.id);
         recalc_sight_limits();
     }
     return numb;
@@ -7088,7 +7098,7 @@ void player::suffer()
         if (oxygen < 0) {
             if (has_bionic("bio_gills") && power_level >= 25) {
                 oxygen += 5;
-                power_level -= 25;
+                charge_power(-25);
             } else {
                 add_msg(m_bad, _("You're drowning!"));
                 apply_damage( nullptr, bp_torso, rng( 1, 4 ) );
@@ -7659,7 +7669,7 @@ void player::suffer()
     }
     if (has_bionic("bio_drain") && power_level > 24 && one_in(600)) {
         add_msg(m_bad, _("Your batteries discharge slightly."));
-        power_level -= 25;
+        charge_power(-25);
     }
     if (has_bionic("bio_noise") && one_in(500)) {
         if(!is_deaf()) {
@@ -7685,7 +7695,7 @@ void player::suffer()
     }
     if (has_bionic("bio_shakes") && power_level > 24 && one_in(1200)) {
         add_msg(m_bad, _("Your bionics short-circuit, causing you to tremble and shiver."));
-        power_level -= 25;
+        charge_power(-25);
         add_effect("shakes", 50);
     }
     if (has_bionic("bio_leaky") && one_in(500)) {
@@ -8557,10 +8567,7 @@ std::list<item> player::use_charges(itype_id it, long quantity)
     std::list<item> ret;
     // the first two cases *probably* don't need to be tracked for now...
     if (it == "toolset") {
-        power_level -= quantity;
-        if (power_level < 0) {
-            power_level = 0;
-        }
+        charge_power(-quantity);
         return ret;
     }
     if (it == "fire") {
@@ -8625,7 +8632,7 @@ std::list<item> player::use_charges(itype_id it, long quantity)
         // and make sure power_level does not get negative
         long ch = std::max(1l, quantity / 10);
         ch = std::min<long>(power_level, ch);
-        power_level -= ch;
+        charge_power(-ch);
         quantity -= ch * 10;
         // TODO: add some(pseudo?) item to resulting list?
     }
@@ -10751,12 +10758,17 @@ bool player::invoke_item( item* used )
 bool player::invoke_item( item* used, const std::string &method )
 {
     if( !has_enough_charges( *used, true ) ) {
-        debugmsg( "Invoked %s on %s, which doesn't have enough charges", method.c_str(), used->tname().c_str() );
         return false;
     }
 
-    long charges_used = used->type->invoke( this, used, pos(), method );
-    return consume_charges( used, charges_used );
+    item *actually_used = used->get_usable_item( method );
+    if( actually_used == nullptr ) {
+        debugmsg( "Tried to invoke a method %s on item %s, which doesn't have this method",
+                  method.c_str(), used->tname().c_str() );
+    }
+
+    long charges_used = actually_used->type->invoke( this, actually_used, pos(), method );
+    return consume_charges( actually_used, charges_used );
 }
 
 void player::remove_gunmod(item *weapon, unsigned id)
@@ -10988,8 +11000,8 @@ void player::do_read( item *book )
         if (reading->fun != 0) {
             add_msg(m_info, _("Reading this book affects your morale by %d"), reading->fun);
         }
-        add_msg(m_info, ngettext("This book takes %d minute to read.",
-                         "This book takes %d minutes to read.", reading->time),
+        add_msg(m_info, ngettext("A chapter of this book takes %d minute to read.",
+                         "A chapter of this book takes %d minutes to read.", reading->time),
                 reading->time );
 
         if (!(reading->recipes.empty())) {
@@ -11674,7 +11686,7 @@ int player::encumb(body_part bp, double &layers, int &armorenc) const
 
             layer[level]++;
             if( worn[i].is_power_armor() && is_wearing_active_power_armor ) {
-                armorenc += std::max( 0, worn[i].get_encumber() - 4);
+                armorenc += std::max( 0, worn[i].get_encumber() - 40);
             } else {
                 armorenc += worn[i].get_encumber();
                 // Fitted clothes will reduce either encumbrance or layering.
@@ -11976,7 +11988,7 @@ void player::absorb_hit(body_part bp, damage_instance &dam) {
                 } else if( elem.type == DT_STAB ) {
                     elem.amount -= rng( 1, 2 );
                 }
-                power_level -= 25;
+                charge_power(-25);
             }
             if( elem.amount < 0 ) {
                 elem.amount = 0;
@@ -12638,7 +12650,7 @@ bool player::uncanny_dodge()
     bool seen = g->u.sees( *this );
     if( this->power_level < 74 || !this->has_active_bionic("bio_uncanny_dodge") ) { return false; }
     point adjacent = adjacent_tile();
-    power_level -= 75;
+    charge_power(-75);
     if( adjacent.x != posx() || adjacent.y != posy()) {
         position.x = adjacent.x;
         position.y = adjacent.y;

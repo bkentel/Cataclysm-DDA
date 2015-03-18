@@ -1001,8 +1001,8 @@ std::string item::info(bool showtext, std::vector<iteminfo> *dump, bool debug) c
                                          _("Reading this book affects your morale by <num>"),
                                          book->fun, true, (book->fun > 0 ? "+" : "")));
             }
-            dump->push_back(iteminfo("BOOK", "", ngettext("This book takes <num> minute to read.",
-                                                          "This book takes <num> minutes to read.",
+            dump->push_back(iteminfo("BOOK", "", ngettext("A chapter of this book takes <num> minute to read.",
+                                                          "A chapter of this book takes <num> minutes to read.",
                                                           book->time),
                                      book->time, true, "", true, true));
             if( book->chapters > 0 ) {
@@ -3487,6 +3487,38 @@ ammotype item::ammo_type() const
         return type->gunmod->newtype;
     }
     return "NULL";
+}
+
+const use_function *item::get_use( const std::string &use_name ) const
+{
+    if( type != nullptr && type->get_use( use_name ) != nullptr ) {
+        return type->get_use( use_name );
+    }
+
+    for( const auto &elem : contents ) {
+        const auto fun = elem.get_use( use_name );
+        if( fun != nullptr ) {
+            return fun;
+        }
+    }
+
+    return nullptr;
+}
+
+item *item::get_usable_item( const std::string &use_name )
+{
+    if( type != nullptr && type->get_use( use_name ) != nullptr ) {
+        return this;
+    }
+
+    for( auto &elem : contents ) {
+        const auto fun = elem.get_use( use_name );
+        if( fun != nullptr ) {
+            return &elem;
+        }
+    }
+
+    return nullptr;
 }
 
 int item::pick_reload_ammo( const player &u, bool interactive )
