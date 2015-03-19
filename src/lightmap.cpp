@@ -61,8 +61,9 @@ void map::build_transparency_cache()
                     if( !(terlist [cur_submap->ter[sx][sy]].transparent &&
                           furnlist[cur_submap->frn[sx][sy]].transparent) ) {
                         value = LIGHT_TRANSPARENCY_SOLID;
-                    } else if (fcount-- > 0 && !cur_submap->fld[sx][sy].is_transparent()) {
+                    } else if (fcount > 0 && !cur_submap->fld[sx][sy].is_transparent()) {
                         value = cur_submap->fld[sx][sy].transparency();
+                        fcount -= cur_submap->fld[sx][sy].size();
                     }
                 }
             }
@@ -159,8 +160,9 @@ void map::generate_lightmap()
                         add_light_source(x, y, 35 );
                     }
 
-                    if (fcount-- > 0 && cur_submap->fld[sx][sy].has_luminous()) {
+                    if (fcount > 0 && cur_submap->fld[sx][sy].has_luminous()) {
                         add_light_source(x, y, cur_submap->fld[sx][sy].luminance());
+                        fcount -= cur_submap->fld[sx][sy].size();
                     }
                 }
             }

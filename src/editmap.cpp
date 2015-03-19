@@ -167,7 +167,7 @@ void editmap_hilight::draw( editmap * hm, bool update ) {
                     const field_entry *t_fld = t_field->find( t_ftype );
                     if ( t_fld ) {
                         auto const &fld = get_field_def(t_ftype);
-                        t_col =  fld.color[t_fld->getFieldDensity()-1];
+                        t_col =  fld.color[t_fld->density()-1];
                         t_sym = fld.sym;
                     }
                 }
@@ -473,7 +473,7 @@ void editmap::update_view(bool update_info)
                     const field_entry *t_fld = t_field->find( t_ftype );
                     if ( t_fld ) {
                         auto const &fld = get_field_def(t_ftype);
-                        t_col =  fld.color[t_fld->getFieldDensity()-1];
+                        t_col =  fld.color[t_fld->density()-1];
                         t_sym = fld.sym;
                     }
                 }
@@ -545,10 +545,10 @@ void editmap::update_view(bool update_info)
         off++;  // 4-5
 
         for (auto const &fld : *cur_field) {
-            auto const &fdef = get_field_def(fld.getFieldType());
-            int  const  d    = fld.getFieldDensity();
+            auto const &fdef = get_field_def(fld.type());
+            int  const  d    = fld.density();
             mvwprintz(w_info, off, 1, fdef.color[d - 1], _("field: %s (%d) density %d age %d"),
-                      fdef.name[d - 1].c_str(), fld.getFieldType(), fld.getFieldDensity(), fld.getFieldAge());
+                      fdef.name[d - 1].c_str(), fld.type(), fld.density(), fld.age());
             off++; // 5ish
         }
 
@@ -932,7 +932,7 @@ void editmap::update_fmenu_entry(uimenu *fmenu, field *field, int idx)
     auto const &ftype = get_field_def(static_cast<field_id>(idx));
     field_entry *fld = field->find(static_cast<field_id>(idx));
     if ( fld != NULL ) {
-        fdens = fld->getFieldDensity();
+        fdens = fld->density();
     }
     fmenu->entries[idx].txt = ( ftype.name[fdens-1].empty() ? fids[idx] : ftype.name[fdens-1] );
     if ( fld != NULL ) {
@@ -984,7 +984,7 @@ int editmap::edit_fld()
             int idx = fmenu.selected;
             field_entry *fld = cur_field->find((field_id)idx);
             if ( fld != NULL ) {
-                fdens = fld->getFieldDensity();
+                fdens = fld->density();
             }
             int fsel_dens = fdens;
             if ( fmenu.keypress == '\n' ) {
@@ -1021,17 +1021,17 @@ int editmap::edit_fld()
                     field_entry *t_fld = t_field->find((field_id)idx);
                     int t_dens = 0;
                     if ( t_fld != NULL ) {
-                        t_dens = t_fld->getFieldDensity();
+                        t_dens = t_fld->density();
                     }
                     if ( fsel_dens != 0 ) {
                         if ( t_dens != 0 ) {
-                            t_fld->setFieldDensity(fsel_dens);
+                            t_fld->intensify(fsel_dens - t_dens);
                         } else {
                             g->m.add_field( elem.x, elem.y, (field_id)idx, fsel_dens );
                         }
                     } else {
                         if ( t_dens != 0 ) {
-                            t_field->remove( (field_id)idx );
+                            g->m.remove_field( elem.x, elem.y, (field_id)idx );
                         }
                     }
                 }
@@ -1045,7 +1045,7 @@ int editmap::edit_fld()
                 field &fld = g->m.get_field(elem.x, elem.y);
                 for (auto const &it : fld) {
                     if (elem.x == target.x && elem.y == target.y) {
-                        update_fmenu_entry(&fmenu, &fld, static_cast<int>(it.getFieldType()));
+                        update_fmenu_entry(&fmenu, &fld, static_cast<int>(it.type()));
                     }
                 }
                 fld.clear();

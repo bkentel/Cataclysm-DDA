@@ -2525,10 +2525,10 @@ void map::shoot(const int x, const int y, int &dam,
     const field_entry *fieldhit = get_field( point( x, y ), fd_web );
     if( fieldhit != nullptr ) {
         if (ammo_effects.count("INCENDIARY") || ammo_effects.count("FLAME")) {
-            add_field(x, y, fd_fire, fieldhit->getFieldDensity() - 1);
-        } else if (dam > 5 + fieldhit->getFieldDensity() * 5 &&
-                   one_in(5 - fieldhit->getFieldDensity())) {
-            dam -= rng(1, 2 + fieldhit->getFieldDensity() * 2);
+            add_field(x, y, fd_fire, fieldhit->density() - 1);
+        } else if (dam > 5 + fieldhit->density() * 5 &&
+                   one_in(5 - fieldhit->density())) {
+            dam -= rng(1, 2 + fieldhit->density() * 2);
             remove_field(x, y,fd_web);
         }
     }
@@ -3838,20 +3838,17 @@ void map::remove_trap(const int x, const int y)
     }
 }
 
-field &map::get_field( const int x, const int y )
+field &map::get_field(const int x, const int y)
 {
-    if( !inbounds( x, y ) ) {
-        nulfield = field();
-        return nulfield;
+    if (!inbounds(x, y)) {
+        return (nulfield = field());
     }
 
     int lx, ly;
-    submap *const current_submap = get_submap_at( x, y, lx, ly );
-
-    return current_submap->fld[lx][ly];
+    return get_submap_at(x, y, lx, ly)->fld[lx][ly];    
 }
 
-field const& map::get_field(int x, int y) const
+field const& map::get_field(int const x, int const y) const
 {
     return const_cast<map*>(this)->get_field(x, y);
 }
@@ -3861,62 +3858,33 @@ const field &map::field_at( const int x, const int y ) const
     return const_cast<map*>(this)->get_field(x, y);
 }
 
-int map::adjust_field_age(const point p, const field_id t, const int offset) {
-    return set_field_age( p, t, offset, true);
-}
-
-int map::adjust_field_strength(const point p, const field_id t, const int offset) {
-    return set_field_strength(p, t, offset, true);
-}
-
-/*
- * Set age of field type at point, or increment/decrement if offset=true
- * returns resulting age or -1 if not present.
- */
-int map::set_field_age(const point p, const field_id t, const int age, bool isoffset) {
-    if (field_entry *field_ptr = get_field(p, t)) {
-        int adj = ( isoffset ? field_ptr->getFieldAge() : 0 ) + age;
-        field_ptr->setFieldAge( adj );
-        return adj;
+int map::adjust_field_strength(const point p, const field_id t, const int delta)
+{
+    field_entry *field_ptr = get_field(p, t);
+    if (!field_ptr && delta > 0) {
+        return add_field(p, t, delta, 0) ? get_field(p, t)->density() : 0;
     }
-    return -1;
-}
 
-/*
- * set strength of field type at point, creating if not present, removing if strength is 0
- * returns resulting strength, or 0 for not present
- */
-int map::set_field_strength(const point p, const field_id t, const int str, bool const isoffset) {
-    if (field_entry *field_ptr = get_field(p, t)) {
-        int adj = ( isoffset ? field_ptr->getFieldDensity() : 0 ) + str;
-        if ( adj > 0 ) {
-            field_ptr->setFieldDensity( adj );
-            return adj;
-        } else {
-            remove_field( p.x, p.y, t );
-            return 0;
-        }
-    } else if ( 0 + str > 0 ) {
-        return ( add_field( p, t, str, 0 ) ? str : 0 );
+    if (field_ptr->intensify(delta)) {
+        return field_ptr->density();
     }
+
+    remove_field(p.x, p.y, t);
     return 0;
 }
 
-int map::get_field_age( const point p, const field_id t ) const {
-    field_entry const *field_ptr = get_field( p, t );
-    return ( !field_ptr ? -1 : field_ptr->getFieldAge() );
-}
-
-int map::get_field_strength( const point p, const field_id t ) const {
-    field_entry const *field_ptr = get_field( p, t );
-    return ( !field_ptr ? 0 : field_ptr->getFieldDensity() );
+int map::get_field_strength( const point p, const field_id t ) const
+{
+    if (auto const f = get_field(p, t)) {
+        return f->density();
+    }
+    
+    return 0;
 }
 
 field_entry* map::get_field(const point p, const field_id t)
 {
-    if (!INBOUNDS(p.x, p.y))
-        return NULL;
-    return get_field( p.x, p.y ).find(t);
+    return get_field(p.x, p.y).find(t);
 }
 
 field_entry const* map::get_field(const point p, const field_id t) const
@@ -3926,29 +3894,24 @@ field_entry const* map::get_field(const point p, const field_id t) const
 
 bool map::add_field(const point p, const field_id t, int density, const int age)
 {
-    if (!INBOUNDS(p.x, p.y)) {
-        return false;
-    }
-
-    if (density > 3) {
-        density = 3;
-    }
-    if (density <= 0) {
+    if (density < 1 || !inbounds(p.x, p.y)) {
         return false;
     }
 
     int lx, ly;
-    submap * const current_submap = get_submap_at(p.x, p.y, lx, ly);
+    submap *const current_submap = get_submap_at(p.x, p.y, lx, ly);
+
     current_submap->is_uniform = false;
 
-    if( current_submap->fld[lx][ly].add( t, density, age ) ) {
-        // TODO: Update overall field_count appropriately.
-        // This is the spirit of "fd_null" that it used to be.
-        current_submap->field_count++; //Only adding it to the count if it doesn't exist.
+    if (current_submap->fld[lx][ly].add(t, density, age)) {
+        current_submap->field_count++;
     }
-    if(g != NULL && this == &g->m && p.x == g->u.posx() && p.y == g->u.posy()) {
-        creature_in_field( g->u ); //Hit the player with the field if it spawned on top of them.
+
+    // Hit the player with the field if it spawned on top of them.
+    if (g && this == &g->m && p.x == g->u.posx() && p.y == g->u.posy()) {
+        creature_in_field(g->u);
     }
+
     return true;
 }
 
@@ -3957,19 +3920,19 @@ bool map::add_field(const int x, const int y, const field_id t, const int new_de
     return this->add_field(point(x,y), t, new_density, 0);
 }
 
-void map::remove_field(const int x, const int y, const field_id field_to_remove)
+void map::remove_field(const int x, const int y, const field_id id)
 {
- if (!INBOUNDS(x, y)) {
-  return;
- }
+    if (!inbounds(x, y)) {
+        return;
+    }
 
- int lx, ly;
- submap * const current_submap = get_submap_at(x, y, lx, ly);
+    int lx, ly;
+    submap *const current_submap = get_submap_at(x, y, lx, ly);
 
- if (current_submap->fld[lx][ly].find(field_to_remove)) { //same as checking for fd_null in the old system
-  current_submap->field_count--;
- }
- current_submap->fld[lx][ly].remove(field_to_remove);
+    if (current_submap->fld[lx][ly].find(id)) {
+        current_submap->fld[lx][ly].remove(id);
+        current_submap->field_count--;
+    }
 }
 
 computer* map::computer_at(const int x, const int y)
@@ -4221,7 +4184,7 @@ void map::drawsq(WINDOW* w, player &u, const int x, const int y, const bool inve
             }
 
             if (auto const fe = curr_field.find(fid)) {
-                tercol = f.color[fe->getFieldDensity() - 1];
+                tercol = f.color[fe->density() - 1];
             }
         }
     }

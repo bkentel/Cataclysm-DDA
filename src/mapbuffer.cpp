@@ -532,10 +532,9 @@ submap *mapbuffer::unserialize_submaps( const tripoint &p )
                         int type = jsin.get_int();
                         int density = jsin.get_int();
                         int age = jsin.get_int();
-                        if (sm->fld[i][j].find(field_id(type)) == NULL) {
+                        if (sm->fld[i][j].add(field_id(type), density, age)) {
                             sm->field_count++;
                         }
-                        sm->fld[i][j].add(field_id(type), density, age);
                     }
                 }
             } else if( submap_member_name == "graffiti" ) {

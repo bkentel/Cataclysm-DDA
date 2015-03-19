@@ -3617,7 +3617,7 @@ void game::update_scent()
                     ) / (1000 * 10);
 
                 field const &fld = m.field_at(x, y);
-                const int fslime = !fld.has_scent() ? 0 : fld.find(fd_slime)->getFieldDensity() * 10;
+                const int fslime = !fld.has_scent() ? 0 : fld.find(fd_slime)->density() * 10;
                 if (fslime > 0 && grscent[x][y] < fslime) {
                     grscent[x][y] = fslime;
                 }
@@ -8162,8 +8162,8 @@ void game::print_terrain_info(int lx, int ly, WINDOW *w_look, int column, int &l
 void game::print_fields_info(int lx, int ly, WINDOW *w_look, int column, int &line)
 {
     for (auto const &fld : m.field_at(lx, ly)) {
-        int const d = fld.getFieldDensity();
-        auto const &fdef = get_field_def(fld.getFieldType());
+        int const d = fld.density();
+        auto const &fdef = get_field_def(fld.type());
         mvwprintz(w_look, line++, column, fdef.color[d - 1], "%s", fdef.name[d - 1].c_str());
     }
 }
@@ -13937,7 +13937,7 @@ void game::process_artifact(item *it, player *p)
         case AEP_EXTINGUISH:
             for (int x = p->posx() - 1; x <= p->posx() + 1; x++) {
                 for (int y = p->posy() - 1; y <= p->posy() + 1; y++) {
-                    m.adjust_field_age(point(x, y), fd_fire, -1);
+                    m.adjust_field_strength(point(x, y), fd_fire, -1);
                 }
             }
 

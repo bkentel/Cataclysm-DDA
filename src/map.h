@@ -606,20 +606,20 @@ void add_corpse(int x, int y);
      * Increment/decrement age of field entry at point.
      * @return resulting age or -1 if not present (does *not* create a new field).
      */
-    int adjust_field_age(point p, field_id t, int offset);
+    //int adjust_field_age(point p, field_id t, int offset);
     /**
      * Increment/decrement density of field entry at point, creating if not present,
      * removing if density becomes 0.
      * @return resulting density, or 0 for not present (either removed or not created at all).
      */
-    int adjust_field_strength(point p, field_id t, int offset);
+    int adjust_field_strength(point p, field_id t, int delta);
     /**
      * Set age of field entry at point.
      * @return resulting age or -1 if not present (does *not* create a new field).
      * @param isoffset If true, the given age value is added to the existing value,
      * if false, the existing age is ignored and overridden.
      */
-    int set_field_age(point p, field_id t, int age, bool isoffset = false);
+    //int set_field_age(point p, field_id t, int age, bool isoffset = false);
     /**
      * Set density of field entry at point, creating if not present,
      * removing if density becomes 0.
@@ -627,7 +627,7 @@ void add_corpse(int x, int y);
      * @param isoffset If true, the given str value is added to the existing value,
      * if false, the existing density is ignored and overridden.
      */
-    int set_field_strength(point p, field_id t, int str, bool isoffset = false);
+    //int set_field_strength(point p, field_id t, int str, bool isoffset = false);
 
     /**
      * Add field entry at point, or set density if present
