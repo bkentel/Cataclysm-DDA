@@ -249,6 +249,8 @@ public:
     bool is_dangerous() const;
     bool is_dangerous(Creature const &subject) const;
 
+    std::string danger_description(Creature const &subject) const;
+
     //! total degree of tranparency for all fields; [0, 1]
     float transparency() const;
 

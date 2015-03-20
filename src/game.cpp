@@ -11698,8 +11698,9 @@ bool game::plmove(int dx, int dy)
         // move_cost() of 0 = impassible (e.g. a wall)
         u.set_underwater(false);
 
-        if (m.field_at(x, y).is_dangerous(u)) {
-            if (!query_yn(_("Really step into that %s?"), "TODO bad stuff")) {
+        field const& fld = m.field_at(x, y);
+        if (fld.is_dangerous(u)) {
+            if (!query_yn(_("Really step into that %s?"), fld.danger_description(u).c_str())) {
                 return false;
             }
         }

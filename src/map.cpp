@@ -3917,7 +3917,7 @@ bool map::add_field(const point p, const field_id t, int density, const int age)
 
 bool map::add_field(const int x, const int y, const field_id t, const int new_density)
 {
-    return this->add_field(point(x,y), t, new_density, 0);
+    return add_field(point(x,y), t, new_density, 0);
 }
 
 void map::remove_field(const int x, const int y, const field_id id)

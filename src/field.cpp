@@ -514,8 +514,7 @@ bool map::process_fields_in_submap( submap *const current_submap,
     bool found_field = false;
     //Holds m.field_at(x,y).find(fd_some_field) type returns.
     // Just to avoid typing that long string for a temp value.
-    field_entry *tmpfld = NULL;
-    field_id curtype; //Holds cur->type() as thats what the old system used before rewrite.
+    field_entry *tmpfld = nullptr;
 
     bool skipIterIncr = false; // keep track on when not to increment it[erator]
 
@@ -524,33 +523,31 @@ bool map::process_fields_in_submap( submap *const current_submap,
         for (int locy = 0; locy < SEEY; locy++) {
             // This is a translation from local coordinates to submap coords.
             // All submaps are in one long 1d array.
-            int x = locx + submap_x * SEEX;
-            int y = locy + submap_y * SEEY;
+            int const x = locx + submap_x * SEEX;
+            int const y = locy + submap_y * SEEY;
             // get a copy of the field variable from the submap;
             // contains all the pointers to the real field effects.
             field &curfield = current_submap->fld[locx][locy];
-            for( auto it = curfield.begin(); it != curfield.end();) {
-                //Iterating through all field effects in the submap's field.
-                field_entry *cur = &*it;
+            size_t const initial_size = curfield.size();
+            for (size_t i = 0; i < std::min(curfield.size(), initial_size); ) {
+                skipIterIncr = false;
 
-                curtype = cur->type();
-                // Setting our return value. fd_null really doesn't exist anymore,
+                // TODO: this is a bit of a hack until this function can be otherwise refactored more fully.
+                // this is needed because iterators would be possibly invalidated by adding new fields.
+                field_entry *const cur = &*(curfield.begin() + i);
+               
+                // Setting our return value; fd_null really doesn't exist anymore,
                 // its there for legacy support.
-                if (!found_field && curtype != fd_null) {
-                    found_field = true;
-                }
+                found_field |= (cur->type() != fd_null);
+
                 // Again, legacy support in the event someone Mods setFieldDensity to allow more values.
                 if (cur->density() > 3 || cur->density() < 1) {
                     debugmsg("Whoooooa density of %d", cur->density());
                 }
 
-                // Don't process "newborn" fields. This gives the player time to run if they need to.
-                if (cur->age() == 0) {
-                    curtype = fd_null;
-                }
+                // Don't process "newborn" fields. This gives the player time to run if they need to.                
+                field_id const curtype = cur->age() ? cur->type() : fd_null;
 
-                int part;
-                vehicle *veh;
                 switch (curtype) {
 
                     case fd_null:
@@ -838,8 +835,9 @@ bool map::process_fields_in_submap( submap *const current_submap,
                         }
                         spawn_items( x, y, new_content );
 
-                        veh = veh_at(x, y, part); //Get the part of the vehicle in the fire.
-                        if (veh) {
+                        int part;
+                        //Get the part of the vehicle in the fire.
+                        if (auto const veh = veh_at(x, y, part)) {
                             veh->damage(part, cur->density() * 10, 2, false);
                             //Damage the vehicle in the fire.
                         }
@@ -996,7 +994,7 @@ bool map::process_fields_in_submap( submap *const current_submap,
                                             }
 
                                             if (fx == x && fy == y) {
-                                                it = result.first;
+                                                ++i;
                                                 skipIterIncr = true;
                                             }
                                         }
@@ -1160,7 +1158,6 @@ bool map::process_fields_in_submap( submap *const current_submap,
                         } else {
                             curfield.remove(fd_fire_vent);
                             curfield.add(fd_flame_burst, 3);
-                            ++it;
                             continue;
                         }
                         create_hot_air( x, y, cur->density());
@@ -1172,7 +1169,6 @@ bool map::process_fields_in_submap( submap *const current_submap,
                         } else {
                             curfield.remove(fd_flame_burst);
                             curfield.add(fd_fire_vent, 3);
-                            ++it;
                             continue;
                         }
                         create_hot_air( x, y, cur->density());
@@ -1400,8 +1396,7 @@ bool map::process_fields_in_submap( submap *const current_submap,
                                     // Them to effectively move several times in a turn depending
                                     // on iteration direction.
                                     if( !target_field.find( fd_bees ) ) {
-                                        add_field( candidate_position, fd_bees,
-                                                   cur->density(), cur->age() );
+                                        add_field(candidate_position, fd_bees, cur->density(), cur->age());
                                         cur->nullify();
                                         break;
                                     }
@@ -1454,15 +1449,19 @@ bool map::process_fields_in_submap( submap *const current_submap,
 
                 } // switch (curtype)
 
-                if (!cur->update()) {
-                    current_submap->field_count--;
-                    it = current_submap->fld[locx][locy].remove(cur->type()).first;
-                    continue;
+                field_entry &cur_after = *(curfield.begin() + i);
+                if (curtype != fd_null && cur_after.type() != curtype) {
+                    abort();
                 }
 
-                if (!skipIterIncr)
-                    ++it;
-                skipIterIncr = false;
+                if (!cur_after.update()) {
+                    current_submap->field_count--;
+                    skipIterIncr = !curfield.remove(cur_after.type()).second;
+                }
+
+                if (!skipIterIncr) {
+                    ++i;
+                }
             }
         }
     }
@@ -2321,6 +2320,27 @@ bool field::is_dangerous(Creature const &subject) const
     return std::any_of(begin(), end(), [&](const_reference ref) {
         return ref.is_dangerous(subject);
     });
+}
+
+std::string field::danger_description(Creature const &subject) const
+{
+    std::string result;
+    bool first = true;
+
+    for (auto const &f : field_list) {
+        if (!f.is_dangerous(subject)) {
+            continue;
+        }
+
+        if (!first) {
+            //~ used between field names
+            result += _(" and ");
+        }
+        first = false;
+        result += f.name();
+    }
+
+    return result;
 }
 
 float field::transparency() const
